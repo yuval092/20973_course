@@ -1,0 +1,9 @@
+__pycache__/
+*.py[cod]
+.superpowers/
+.codex*
+.gemini*
+docs/superpowers/plans/
+docs/superpowers/specs/
+models/
+stockfish/

@@ -1,0 +1,427 @@
+<mujoco model="fetch_chess">
+    <include file="fetch.xml"/>
+    <visual>
+        <quality shadowsize="0"/>
+    </visual>
+    <asset>
+        <material name="white_square" rgba="0.96 0.87 0.70 1"/>
+        <material name="black_square" rgba="0.55 0.27 0.07 1"/>
+        <material name="white_piece" rgba="1 1 1 1"/>
+        <material name="black_piece" rgba="0.1 0.1 0.1 1"/>
+        <mesh file="chess_pawn.stl" name="chess_pawn_mesh"/>
+        <mesh file="chess_rook.stl" name="chess_rook_mesh"/>
+        <mesh file="chess_knight.stl" name="chess_knight_mesh"/>
+        <mesh file="chess_bishop.stl" name="chess_bishop_mesh"/>
+        <mesh file="chess_queen.stl" name="chess_queen_mesh"/>
+        <mesh file="chess_king.stl" name="chess_king_mesh"/>
+    </asset>
+    <worldbody>
+        <light pos="0 0 2" dir="0 0 -1" directional="true"/>
+        <geom name="table" type="box" size="0.5 0.5 0.2" pos="1.18 0.75 0.2" rgba="0.6 0.6 0.6 1" contype="1" conaffinity="1"/>
+        <geom name="safety_floor" type="plane" size="2 2 0.1" pos="1.180 0.750 0.35" rgba="0 0 0 0" contype="1" conaffinity="1" />
+        <geom name="board_collision" type="box" size="0.3200 0.3200 0.0120" pos="1.180 0.750 0.3890" rgba="0 0 0 0" condim="4" solimp="0.99 0.99 0.001" solref="0.01 1" friction="0.8 0.02 0.002" />
+        <geom name="board_underlay" type="box" size="0.2800 0.2800 0.0007" pos="1.180 0.750 0.3993" rgba="0.30 0.17 0.08 1" contype="0" conaffinity="0"/>
+        <geom name="board_frame_north" type="box" size="0.2920 0.0060 0.0030" pos="1.180 1.036 0.4030" rgba="0.36 0.18 0.04 1" contype="0" conaffinity="0"/>
+        <geom name="board_frame_south" type="box" size="0.2920 0.0060 0.0030" pos="1.180 0.464 0.4030" rgba="0.36 0.18 0.04 1" contype="0" conaffinity="0"/>
+        <geom name="board_frame_west" type="box" size="0.0060 0.2800 0.0030" pos="0.894 0.750 0.4030" rgba="0.36 0.18 0.04 1" contype="0" conaffinity="0"/>
+        <geom name="board_frame_east" type="box" size="0.0060 0.2800 0.0030" pos="1.466 0.750 0.4030" rgba="0.36 0.18 0.04 1" contype="0" conaffinity="0"/>
+        <geom name="square_0_0" type="box" size="0.033 0.033 0.0005" pos="1.425 0.995 0.4005" material="black_square" contype="0" conaffinity="0"/>
+        <geom name="square_0_1" type="box" size="0.033 0.033 0.0005" pos="1.425 0.925 0.4005" material="white_square" contype="0" conaffinity="0"/>
+        <geom name="square_0_2" type="box" size="0.033 0.033 0.0005" pos="1.425 0.855 0.4005" material="black_square" contype="0" conaffinity="0"/>
+        <geom name="square_0_3" type="box" size="0.033 0.033 0.0005" pos="1.425 0.785 0.4005" material="white_square" contype="0" conaffinity="0"/>
+        <geom name="square_0_4" type="box" size="0.033 0.033 0.0005" pos="1.425 0.715 0.4005" material="black_square" contype="0" conaffinity="0"/>
+        <geom name="square_0_5" type="box" size="0.033 0.033 0.0005" pos="1.425 0.645 0.4005" material="white_square" contype="0" conaffinity="0"/>
+        <geom name="square_0_6" type="box" size="0.033 0.033 0.0005" pos="1.425 0.575 0.4005" material="black_square" contype="0" conaffinity="0"/>
+        <geom name="square_0_7" type="box" size="0.033 0.033 0.0005" pos="1.425 0.505 0.4005" material="white_square" contype="0" conaffinity="0"/>
+        <geom name="square_1_0" type="box" size="0.033 0.033 0.0005" pos="1.355 0.995 0.4005" material="white_square" contype="0" conaffinity="0"/>
+        <geom name="square_1_1" type="box" size="0.033 0.033 0.0005" pos="1.355 0.925 0.4005" material="black_square" contype="0" conaffinity="0"/>
+        <geom name="square_1_2" type="box" size="0.033 0.033 0.0005" pos="1.355 0.855 0.4005" material="white_square" contype="0" conaffinity="0"/>
+        <geom name="square_1_3" type="box" size="0.033 0.033 0.0005" pos="1.355 0.785 0.4005" material="black_square" contype="0" conaffinity="0"/>
+        <geom name="square_1_4" type="box" size="0.033 0.033 0.0005" pos="1.355 0.715 0.4005" material="white_square" contype="0" conaffinity="0"/>
+        <geom name="square_1_5" type="box" size="0.033 0.033 0.0005" pos="1.355 0.645 0.4005" material="black_square" contype="0" conaffinity="0"/>
+        <geom name="square_1_6" type="box" size="0.033 0.033 0.0005" pos="1.355 0.575 0.4005" material="white_square" contype="0" conaffinity="0"/>
+        <geom name="square_1_7" type="box" size="0.033 0.033 0.0005" pos="1.355 0.505 0.4005" material="black_square" contype="0" conaffinity="0"/>
+        <geom name="square_2_0" type="box" size="0.033 0.033 0.0005" pos="1.285 0.995 0.4005" material="black_square" contype="0" conaffinity="0"/>
+        <geom name="square_2_1" type="box" size="0.033 0.033 0.0005" pos="1.285 0.925 0.4005" material="white_square" contype="0" conaffinity="0"/>
+        <geom name="square_2_2" type="box" size="0.033 0.033 0.0005" pos="1.285 0.855 0.4005" material="black_square" contype="0" conaffinity="0"/>
+        <geom name="square_2_3" type="box" size="0.033 0.033 0.0005" pos="1.285 0.785 0.4005" material="white_square" contype="0" conaffinity="0"/>
+        <geom name="square_2_4" type="box" size="0.033 0.033 0.0005" pos="1.285 0.715 0.4005" material="black_square" contype="0" conaffinity="0"/>
+        <geom name="square_2_5" type="box" size="0.033 0.033 0.0005" pos="1.285 0.645 0.4005" material="white_square" contype="0" conaffinity="0"/>
+        <geom name="square_2_6" type="box" size="0.033 0.033 0.0005" pos="1.285 0.575 0.4005" material="black_square" contype="0" conaffinity="0"/>
+        <geom name="square_2_7" type="box" size="0.033 0.033 0.0005" pos="1.285 0.505 0.4005" material="white_square" contype="0" conaffinity="0"/>
+        <geom name="square_3_0" type="box" size="0.033 0.033 0.0005" pos="1.215 0.995 0.4005" material="white_square" contype="0" conaffinity="0"/>
+        <geom name="square_3_1" type="box" size="0.033 0.033 0.0005" pos="1.215 0.925 0.4005" material="black_square" contype="0" conaffinity="0"/>
+        <geom name="square_3_2" type="box" size="0.033 0.033 0.0005" pos="1.215 0.855 0.4005" material="white_square" contype="0" conaffinity="0"/>
+        <geom name="square_3_3" type="box" size="0.033 0.033 0.0005" pos="1.215 0.785 0.4005" material="black_square" contype="0" conaffinity="0"/>
+        <geom name="square_3_4" type="box" size="0.033 0.033 0.0005" pos="1.215 0.715 0.4005" material="white_square" contype="0" conaffinity="0"/>
+        <geom name="square_3_5" type="box" size="0.033 0.033 0.0005" pos="1.215 0.645 0.4005" material="black_square" contype="0" conaffinity="0"/>
+        <geom name="square_3_6" type="box" size="0.033 0.033 0.0005" pos="1.215 0.575 0.4005" material="white_square" contype="0" conaffinity="0"/>
+        <geom name="square_3_7" type="box" size="0.033 0.033 0.0005" pos="1.215 0.505 0.4005" material="black_square" contype="0" conaffinity="0"/>
+        <geom name="square_4_0" type="box" size="0.033 0.033 0.0005" pos="1.145 0.995 0.4005" material="black_square" contype="0" conaffinity="0"/>
+        <geom name="square_4_1" type="box" size="0.033 0.033 0.0005" pos="1.145 0.925 0.4005" material="white_square" contype="0" conaffinity="0"/>
+        <geom name="square_4_2" type="box" size="0.033 0.033 0.0005" pos="1.145 0.855 0.4005" material="black_square" contype="0" conaffinity="0"/>
+        <geom name="square_4_3" type="box" size="0.033 0.033 0.0005" pos="1.145 0.785 0.4005" material="white_square" contype="0" conaffinity="0"/>
+        <geom name="square_4_4" type="box" size="0.033 0.033 0.0005" pos="1.145 0.715 0.4005" material="black_square" contype="0" conaffinity="0"/>
+        <geom name="square_4_5" type="box" size="0.033 0.033 0.0005" pos="1.145 0.645 0.4005" material="white_square" contype="0" conaffinity="0"/>
+        <geom name="square_4_6" type="box" size="0.033 0.033 0.0005" pos="1.145 0.575 0.4005" material="black_square" contype="0" conaffinity="0"/>
+        <geom name="square_4_7" type="box" size="0.033 0.033 0.0005" pos="1.145 0.505 0.4005" material="white_square" contype="0" conaffinity="0"/>
+        <geom name="square_5_0" type="box" size="0.033 0.033 0.0005" pos="1.075 0.995 0.4005" material="white_square" contype="0" conaffinity="0"/>
+        <geom name="square_5_1" type="box" size="0.033 0.033 0.0005" pos="1.075 0.925 0.4005" material="black_square" contype="0" conaffinity="0"/>
+        <geom name="square_5_2" type="box" size="0.033 0.033 0.0005" pos="1.075 0.855 0.4005" material="white_square" contype="0" conaffinity="0"/>
+        <geom name="square_5_3" type="box" size="0.033 0.033 0.0005" pos="1.075 0.785 0.4005" material="black_square" contype="0" conaffinity="0"/>
+        <geom name="square_5_4" type="box" size="0.033 0.033 0.0005" pos="1.075 0.715 0.4005" material="white_square" contype="0" conaffinity="0"/>
+        <geom name="square_5_5" type="box" size="0.033 0.033 0.0005" pos="1.075 0.645 0.4005" material="black_square" contype="0" conaffinity="0"/>
+        <geom name="square_5_6" type="box" size="0.033 0.033 0.0005" pos="1.075 0.575 0.4005" material="white_square" contype="0" conaffinity="0"/>
+        <geom name="square_5_7" type="box" size="0.033 0.033 0.0005" pos="1.075 0.505 0.4005" material="black_square" contype="0" conaffinity="0"/>
+        <geom name="square_6_0" type="box" size="0.033 0.033 0.0005" pos="1.005 0.995 0.4005" material="black_square" contype="0" conaffinity="0"/>
+        <geom name="square_6_1" type="box" size="0.033 0.033 0.0005" pos="1.005 0.925 0.4005" material="white_square" contype="0" conaffinity="0"/>
+        <geom name="square_6_2" type="box" size="0.033 0.033 0.0005" pos="1.005 0.855 0.4005" material="black_square" contype="0" conaffinity="0"/>
+        <geom name="square_6_3" type="box" size="0.033 0.033 0.0005" pos="1.005 0.785 0.4005" material="white_square" contype="0" conaffinity="0"/>
+        <geom name="square_6_4" type="box" size="0.033 0.033 0.0005" pos="1.005 0.715 0.4005" material="black_square" contype="0" conaffinity="0"/>
+        <geom name="square_6_5" type="box" size="0.033 0.033 0.0005" pos="1.005 0.645 0.4005" material="white_square" contype="0" conaffinity="0"/>
+        <geom name="square_6_6" type="box" size="0.033 0.033 0.0005" pos="1.005 0.575 0.4005" material="black_square" contype="0" conaffinity="0"/>
+        <geom name="square_6_7" type="box" size="0.033 0.033 0.0005" pos="1.005 0.505 0.4005" material="white_square" contype="0" conaffinity="0"/>
+        <geom name="square_7_0" type="box" size="0.033 0.033 0.0005" pos="0.935 0.995 0.4005" material="white_square" contype="0" conaffinity="0"/>
+        <geom name="square_7_1" type="box" size="0.033 0.033 0.0005" pos="0.935 0.925 0.4005" material="black_square" contype="0" conaffinity="0"/>
+        <geom name="square_7_2" type="box" size="0.033 0.033 0.0005" pos="0.935 0.855 0.4005" material="white_square" contype="0" conaffinity="0"/>
+        <geom name="square_7_3" type="box" size="0.033 0.033 0.0005" pos="0.935 0.785 0.4005" material="black_square" contype="0" conaffinity="0"/>
+        <geom name="square_7_4" type="box" size="0.033 0.033 0.0005" pos="0.935 0.715 0.4005" material="white_square" contype="0" conaffinity="0"/>
+        <geom name="square_7_5" type="box" size="0.033 0.033 0.0005" pos="0.935 0.645 0.4005" material="black_square" contype="0" conaffinity="0"/>
+        <geom name="square_7_6" type="box" size="0.033 0.033 0.0005" pos="0.935 0.575 0.4005" material="white_square" contype="0" conaffinity="0"/>
+        <geom name="square_7_7" type="box" size="0.033 0.033 0.0005" pos="0.935 0.505 0.4005" material="black_square" contype="0" conaffinity="0"/>
+        <geom name="label_file_a_0" type="box" size="0.0017 0.0140 0.0006" pos="1.415 1.070 0.4045" rgba="0.87 0.18 0.18 0.95" contype="0" conaffinity="0"/>
+        <geom name="label_file_a_1" type="box" size="0.0017 0.0140 0.0006" pos="1.435 1.070 0.4045" rgba="0.87 0.18 0.18 0.95" contype="0" conaffinity="0"/>
+        <geom name="label_file_a_2" type="box" size="0.0078 0.0017 0.0006" pos="1.425 1.070 0.4045" rgba="0.87 0.18 0.18 0.95" contype="0" conaffinity="0"/>
+        <geom name="label_file_a_3" type="box" size="0.0078 0.0017 0.0006" pos="1.425 1.082 0.4045" rgba="0.87 0.18 0.18 0.95" contype="0" conaffinity="0"/>
+        <geom name="label_file_b_0" type="box" size="0.0017 0.0140 0.0006" pos="1.345 1.070 0.4045" rgba="0.87 0.18 0.18 0.95" contype="0" conaffinity="0"/>
+        <geom name="label_file_b_1" type="box" size="0.0067 0.0017 0.0006" pos="1.354 1.082 0.4045" rgba="0.87 0.18 0.18 0.95" contype="0" conaffinity="0"/>
+        <geom name="label_file_b_2" type="box" size="0.0064 0.0017 0.0006" pos="1.354 1.070 0.4045" rgba="0.87 0.18 0.18 0.95" contype="0" conaffinity="0"/>
+        <geom name="label_file_b_3" type="box" size="0.0067 0.0017 0.0006" pos="1.354 1.058 0.4045" rgba="0.87 0.18 0.18 0.95" contype="0" conaffinity="0"/>
+        <geom name="label_file_b_4" type="box" size="0.0017 0.0045 0.0006" pos="1.362 1.076 0.4045" rgba="0.87 0.18 0.18 0.95" contype="0" conaffinity="0"/>
+        <geom name="label_file_b_5" type="box" size="0.0017 0.0045 0.0006" pos="1.362 1.064 0.4045" rgba="0.87 0.18 0.18 0.95" contype="0" conaffinity="0"/>
+        <geom name="label_file_c_0" type="box" size="0.0084 0.0017 0.0006" pos="1.286 1.082 0.4045" rgba="0.87 0.18 0.18 0.95" contype="0" conaffinity="0"/>
+        <geom name="label_file_c_1" type="box" size="0.0017 0.0106 0.0006" pos="1.275 1.070 0.4045" rgba="0.87 0.18 0.18 0.95" contype="0" conaffinity="0"/>
+        <geom name="label_file_c_2" type="box" size="0.0084 0.0017 0.0006" pos="1.286 1.058 0.4045" rgba="0.87 0.18 0.18 0.95" contype="0" conaffinity="0"/>
+        <geom name="label_file_d_0" type="box" size="0.0017 0.0140 0.0006" pos="1.205 1.070 0.4045" rgba="0.87 0.18 0.18 0.95" contype="0" conaffinity="0"/>
+        <geom name="label_file_d_1" type="box" size="0.0064 0.0017 0.0006" pos="1.214 1.082 0.4045" rgba="0.87 0.18 0.18 0.95" contype="0" conaffinity="0"/>
+        <geom name="label_file_d_2" type="box" size="0.0064 0.0017 0.0006" pos="1.214 1.058 0.4045" rgba="0.87 0.18 0.18 0.95" contype="0" conaffinity="0"/>
+        <geom name="label_file_d_3" type="box" size="0.0017 0.0106 0.0006" pos="1.222 1.070 0.4045" rgba="0.87 0.18 0.18 0.95" contype="0" conaffinity="0"/>
+        <geom name="label_file_e_0" type="box" size="0.0017 0.0140 0.0006" pos="1.135 1.070 0.4045" rgba="0.87 0.18 0.18 0.95" contype="0" conaffinity="0"/>
+        <geom name="label_file_e_1" type="box" size="0.0084 0.0017 0.0006" pos="1.146 1.082 0.4045" rgba="0.87 0.18 0.18 0.95" contype="0" conaffinity="0"/>
+        <geom name="label_file_e_2" type="box" size="0.0073 0.0017 0.0006" pos="1.144 1.070 0.4045" rgba="0.87 0.18 0.18 0.95" contype="0" conaffinity="0"/>
+        <geom name="label_file_e_3" type="box" size="0.0084 0.0017 0.0006" pos="1.146 1.058 0.4045" rgba="0.87 0.18 0.18 0.95" contype="0" conaffinity="0"/>
+        <geom name="label_file_f_0" type="box" size="0.0017 0.0140 0.0006" pos="1.065 1.070 0.4045" rgba="0.87 0.18 0.18 0.95" contype="0" conaffinity="0"/>
+        <geom name="label_file_f_1" type="box" size="0.0084 0.0017 0.0006" pos="1.076 1.082 0.4045" rgba="0.87 0.18 0.18 0.95" contype="0" conaffinity="0"/>
+        <geom name="label_file_f_2" type="box" size="0.0073 0.0017 0.0006" pos="1.074 1.070 0.4045" rgba="0.87 0.18 0.18 0.95" contype="0" conaffinity="0"/>
+        <geom name="label_file_g_0" type="box" size="0.0084 0.0017 0.0006" pos="1.006 1.082 0.4045" rgba="0.87 0.18 0.18 0.95" contype="0" conaffinity="0"/>
+        <geom name="label_file_g_1" type="box" size="0.0017 0.0106 0.0006" pos="0.995 1.070 0.4045" rgba="0.87 0.18 0.18 0.95" contype="0" conaffinity="0"/>
+        <geom name="label_file_g_2" type="box" size="0.0084 0.0017 0.0006" pos="1.006 1.058 0.4045" rgba="0.87 0.18 0.18 0.95" contype="0" conaffinity="0"/>
+        <geom name="label_file_g_3" type="box" size="0.0031 0.0017 0.0006" pos="1.011 1.066 0.4045" rgba="0.87 0.18 0.18 0.95" contype="0" conaffinity="0"/>
+        <geom name="label_file_g_4" type="box" size="0.0017 0.0062 0.0006" pos="1.012 1.070 0.4045" rgba="0.87 0.18 0.18 0.95" contype="0" conaffinity="0"/>
+        <geom name="label_file_h_0" type="box" size="0.0017 0.0140 0.0006" pos="0.925 1.070 0.4045" rgba="0.87 0.18 0.18 0.95" contype="0" conaffinity="0"/>
+        <geom name="label_file_h_1" type="box" size="0.0017 0.0140 0.0006" pos="0.945 1.070 0.4045" rgba="0.87 0.18 0.18 0.95" contype="0" conaffinity="0"/>
+        <geom name="label_file_h_2" type="box" size="0.0078 0.0017 0.0006" pos="0.935 1.070 0.4045" rgba="0.87 0.18 0.18 0.95" contype="0" conaffinity="0"/>
+        <geom name="label_file_near_a_0" type="box" size="0.0017 0.0140 0.0006" pos="1.415 0.430 0.4045" rgba="0.87 0.18 0.18 0.95" contype="0" conaffinity="0"/>
+        <geom name="label_file_near_a_1" type="box" size="0.0017 0.0140 0.0006" pos="1.435 0.430 0.4045" rgba="0.87 0.18 0.18 0.95" contype="0" conaffinity="0"/>
+        <geom name="label_file_near_a_2" type="box" size="0.0078 0.0017 0.0006" pos="1.425 0.430 0.4045" rgba="0.87 0.18 0.18 0.95" contype="0" conaffinity="0"/>
+        <geom name="label_file_near_a_3" type="box" size="0.0078 0.0017 0.0006" pos="1.425 0.442 0.4045" rgba="0.87 0.18 0.18 0.95" contype="0" conaffinity="0"/>
+        <geom name="label_file_near_b_0" type="box" size="0.0017 0.0140 0.0006" pos="1.345 0.430 0.4045" rgba="0.87 0.18 0.18 0.95" contype="0" conaffinity="0"/>
+        <geom name="label_file_near_b_1" type="box" size="0.0067 0.0017 0.0006" pos="1.354 0.442 0.4045" rgba="0.87 0.18 0.18 0.95" contype="0" conaffinity="0"/>
+        <geom name="label_file_near_b_2" type="box" size="0.0064 0.0017 0.0006" pos="1.354 0.430 0.4045" rgba="0.87 0.18 0.18 0.95" contype="0" conaffinity="0"/>
+        <geom name="label_file_near_b_3" type="box" size="0.0067 0.0017 0.0006" pos="1.354 0.418 0.4045" rgba="0.87 0.18 0.18 0.95" contype="0" conaffinity="0"/>
+        <geom name="label_file_near_b_4" type="box" size="0.0017 0.0045 0.0006" pos="1.362 0.436 0.4045" rgba="0.87 0.18 0.18 0.95" contype="0" conaffinity="0"/>
+        <geom name="label_file_near_b_5" type="box" size="0.0017 0.0045 0.0006" pos="1.362 0.424 0.4045" rgba="0.87 0.18 0.18 0.95" contype="0" conaffinity="0"/>
+        <geom name="label_file_near_c_0" type="box" size="0.0084 0.0017 0.0006" pos="1.286 0.442 0.4045" rgba="0.87 0.18 0.18 0.95" contype="0" conaffinity="0"/>
+        <geom name="label_file_near_c_1" type="box" size="0.0017 0.0106 0.0006" pos="1.275 0.430 0.4045" rgba="0.87 0.18 0.18 0.95" contype="0" conaffinity="0"/>
+        <geom name="label_file_near_c_2" type="box" size="0.0084 0.0017 0.0006" pos="1.286 0.418 0.4045" rgba="0.87 0.18 0.18 0.95" contype="0" conaffinity="0"/>
+        <geom name="label_file_near_d_0" type="box" size="0.0017 0.0140 0.0006" pos="1.205 0.430 0.4045" rgba="0.87 0.18 0.18 0.95" contype="0" conaffinity="0"/>
+        <geom name="label_file_near_d_1" type="box" size="0.0064 0.0017 0.0006" pos="1.214 0.442 0.4045" rgba="0.87 0.18 0.18 0.95" contype="0" conaffinity="0"/>
+        <geom name="label_file_near_d_2" type="box" size="0.0064 0.0017 0.0006" pos="1.214 0.418 0.4045" rgba="0.87 0.18 0.18 0.95" contype="0" conaffinity="0"/>
+        <geom name="label_file_near_d_3" type="box" size="0.0017 0.0106 0.0006" pos="1.222 0.430 0.4045" rgba="0.87 0.18 0.18 0.95" contype="0" conaffinity="0"/>
+        <geom name="label_file_near_e_0" type="box" size="0.0017 0.0140 0.0006" pos="1.135 0.430 0.4045" rgba="0.87 0.18 0.18 0.95" contype="0" conaffinity="0"/>
+        <geom name="label_file_near_e_1" type="box" size="0.0084 0.0017 0.0006" pos="1.146 0.442 0.4045" rgba="0.87 0.18 0.18 0.95" contype="0" conaffinity="0"/>
+        <geom name="label_file_near_e_2" type="box" size="0.0073 0.0017 0.0006" pos="1.144 0.430 0.4045" rgba="0.87 0.18 0.18 0.95" contype="0" conaffinity="0"/>
+        <geom name="label_file_near_e_3" type="box" size="0.0084 0.0017 0.0006" pos="1.146 0.418 0.4045" rgba="0.87 0.18 0.18 0.95" contype="0" conaffinity="0"/>
+        <geom name="label_file_near_f_0" type="box" size="0.0017 0.0140 0.0006" pos="1.065 0.430 0.4045" rgba="0.87 0.18 0.18 0.95" contype="0" conaffinity="0"/>
+        <geom name="label_file_near_f_1" type="box" size="0.0084 0.0017 0.0006" pos="1.076 0.442 0.4045" rgba="0.87 0.18 0.18 0.95" contype="0" conaffinity="0"/>
+        <geom name="label_file_near_f_2" type="box" size="0.0073 0.0017 0.0006" pos="1.074 0.430 0.4045" rgba="0.87 0.18 0.18 0.95" contype="0" conaffinity="0"/>
+        <geom name="label_file_near_g_0" type="box" size="0.0084 0.0017 0.0006" pos="1.006 0.442 0.4045" rgba="0.87 0.18 0.18 0.95" contype="0" conaffinity="0"/>
+        <geom name="label_file_near_g_1" type="box" size="0.0017 0.0106 0.0006" pos="0.995 0.430 0.4045" rgba="0.87 0.18 0.18 0.95" contype="0" conaffinity="0"/>
+        <geom name="label_file_near_g_2" type="box" size="0.0084 0.0017 0.0006" pos="1.006 0.418 0.4045" rgba="0.87 0.18 0.18 0.95" contype="0" conaffinity="0"/>
+        <geom name="label_file_near_g_3" type="box" size="0.0031 0.0017 0.0006" pos="1.011 0.426 0.4045" rgba="0.87 0.18 0.18 0.95" contype="0" conaffinity="0"/>
+        <geom name="label_file_near_g_4" type="box" size="0.0017 0.0062 0.0006" pos="1.012 0.430 0.4045" rgba="0.87 0.18 0.18 0.95" contype="0" conaffinity="0"/>
+        <geom name="label_file_near_h_0" type="box" size="0.0017 0.0140 0.0006" pos="0.925 0.430 0.4045" rgba="0.87 0.18 0.18 0.95" contype="0" conaffinity="0"/>
+        <geom name="label_file_near_h_1" type="box" size="0.0017 0.0140 0.0006" pos="0.945 0.430 0.4045" rgba="0.87 0.18 0.18 0.95" contype="0" conaffinity="0"/>
+        <geom name="label_file_near_h_2" type="box" size="0.0078 0.0017 0.0006" pos="0.935 0.430 0.4045" rgba="0.87 0.18 0.18 0.95" contype="0" conaffinity="0"/>
+        <geom name="label_rank_1_0" type="box" size="0.0017 0.0140 0.0006" pos="1.495 0.995 0.4045" rgba="0.87 0.18 0.18 0.95" contype="0" conaffinity="0"/>
+        <geom name="label_rank_1_1" type="box" size="0.0039 0.0025 0.0006" pos="1.493 1.006 0.4045" rgba="0.87 0.18 0.18 0.95" contype="0" conaffinity="0"/>
+        <geom name="label_rank_1_2" type="box" size="0.0073 0.0017 0.0006" pos="1.495 0.983 0.4045" rgba="0.87 0.18 0.18 0.95" contype="0" conaffinity="0"/>
+        <geom name="label_rank_2_0" type="box" size="0.0090 0.0017 0.0006" pos="1.495 0.937 0.4045" rgba="0.87 0.18 0.18 0.95" contype="0" conaffinity="0"/>
+        <geom name="label_rank_2_1" type="box" size="0.0017 0.0045 0.0006" pos="1.502 0.931 0.4045" rgba="0.87 0.18 0.18 0.95" contype="0" conaffinity="0"/>
+        <geom name="label_rank_2_2" type="box" size="0.0090 0.0017 0.0006" pos="1.495 0.925 0.4045" rgba="0.87 0.18 0.18 0.95" contype="0" conaffinity="0"/>
+        <geom name="label_rank_2_3" type="box" size="0.0017 0.0045 0.0006" pos="1.488 0.919 0.4045" rgba="0.87 0.18 0.18 0.95" contype="0" conaffinity="0"/>
+        <geom name="label_rank_2_4" type="box" size="0.0090 0.0017 0.0006" pos="1.495 0.913 0.4045" rgba="0.87 0.18 0.18 0.95" contype="0" conaffinity="0"/>
+        <geom name="label_rank_3_0" type="box" size="0.0090 0.0017 0.0006" pos="1.495 0.867 0.4045" rgba="0.87 0.18 0.18 0.95" contype="0" conaffinity="0"/>
+        <geom name="label_rank_3_1" type="box" size="0.0090 0.0017 0.0006" pos="1.495 0.855 0.4045" rgba="0.87 0.18 0.18 0.95" contype="0" conaffinity="0"/>
+        <geom name="label_rank_3_2" type="box" size="0.0090 0.0017 0.0006" pos="1.495 0.843 0.4045" rgba="0.87 0.18 0.18 0.95" contype="0" conaffinity="0"/>
+        <geom name="label_rank_3_3" type="box" size="0.0017 0.0106 0.0006" pos="1.502 0.855 0.4045" rgba="0.87 0.18 0.18 0.95" contype="0" conaffinity="0"/>
+        <geom name="label_rank_4_0" type="box" size="0.0073 0.0017 0.0006" pos="1.493 0.788 0.4045" rgba="0.87 0.18 0.18 0.95" contype="0" conaffinity="0"/>
+        <geom name="label_rank_4_1" type="box" size="0.0017 0.0062 0.0006" pos="1.488 0.793 0.4045" rgba="0.87 0.18 0.18 0.95" contype="0" conaffinity="0"/>
+        <geom name="label_rank_4_2" type="box" size="0.0017 0.0140 0.0006" pos="1.502 0.785 0.4045" rgba="0.87 0.18 0.18 0.95" contype="0" conaffinity="0"/>
+        <geom name="label_rank_5_0" type="box" size="0.0090 0.0017 0.0006" pos="1.495 0.727 0.4045" rgba="0.87 0.18 0.18 0.95" contype="0" conaffinity="0"/>
+        <geom name="label_rank_5_1" type="box" size="0.0017 0.0045 0.0006" pos="1.488 0.721 0.4045" rgba="0.87 0.18 0.18 0.95" contype="0" conaffinity="0"/>
+        <geom name="label_rank_5_2" type="box" size="0.0090 0.0017 0.0006" pos="1.495 0.715 0.4045" rgba="0.87 0.18 0.18 0.95" contype="0" conaffinity="0"/>
+        <geom name="label_rank_5_3" type="box" size="0.0017 0.0045 0.0006" pos="1.502 0.709 0.4045" rgba="0.87 0.18 0.18 0.95" contype="0" conaffinity="0"/>
+        <geom name="label_rank_5_4" type="box" size="0.0090 0.0017 0.0006" pos="1.495 0.703 0.4045" rgba="0.87 0.18 0.18 0.95" contype="0" conaffinity="0"/>
+        <geom name="label_rank_6_0" type="box" size="0.0090 0.0017 0.0006" pos="1.495 0.657 0.4045" rgba="0.87 0.18 0.18 0.95" contype="0" conaffinity="0"/>
+        <geom name="label_rank_6_1" type="box" size="0.0017 0.0106 0.0006" pos="1.488 0.645 0.4045" rgba="0.87 0.18 0.18 0.95" contype="0" conaffinity="0"/>
+        <geom name="label_rank_6_2" type="box" size="0.0090 0.0017 0.0006" pos="1.495 0.645 0.4045" rgba="0.87 0.18 0.18 0.95" contype="0" conaffinity="0"/>
+        <geom name="label_rank_6_3" type="box" size="0.0017 0.0045 0.0006" pos="1.502 0.639 0.4045" rgba="0.87 0.18 0.18 0.95" contype="0" conaffinity="0"/>
+        <geom name="label_rank_6_4" type="box" size="0.0090 0.0017 0.0006" pos="1.495 0.633 0.4045" rgba="0.87 0.18 0.18 0.95" contype="0" conaffinity="0"/>
+        <geom name="label_rank_7_0" type="box" size="0.0090 0.0017 0.0006" pos="1.495 0.587 0.4045" rgba="0.87 0.18 0.18 0.95" contype="0" conaffinity="0"/>
+        <geom name="label_rank_7_1" type="box" size="0.0017 0.0123 0.0006" pos="1.500 0.573 0.4045" rgba="0.87 0.18 0.18 0.95" contype="0" conaffinity="0"/>
+        <geom name="label_rank_8_0" type="box" size="0.0090 0.0017 0.0006" pos="1.495 0.517 0.4045" rgba="0.87 0.18 0.18 0.95" contype="0" conaffinity="0"/>
+        <geom name="label_rank_8_1" type="box" size="0.0090 0.0017 0.0006" pos="1.495 0.505 0.4045" rgba="0.87 0.18 0.18 0.95" contype="0" conaffinity="0"/>
+        <geom name="label_rank_8_2" type="box" size="0.0090 0.0017 0.0006" pos="1.495 0.493 0.4045" rgba="0.87 0.18 0.18 0.95" contype="0" conaffinity="0"/>
+        <geom name="label_rank_8_3" type="box" size="0.0017 0.0106 0.0006" pos="1.488 0.505 0.4045" rgba="0.87 0.18 0.18 0.95" contype="0" conaffinity="0"/>
+        <geom name="label_rank_8_4" type="box" size="0.0017 0.0106 0.0006" pos="1.502 0.505 0.4045" rgba="0.87 0.18 0.18 0.95" contype="0" conaffinity="0"/>
+        <body name="w_pawn_1" pos="1.425 0.925 0.4130">
+            <joint type="free" damping="5.0"/>
+            <geom type="mesh" mesh="chess_pawn_mesh" material="white_piece" pos="0 0 0.0040" mass="0" contype="2" conaffinity="2" friction="1.2 0.02 0.002"/>
+            <geom type="cylinder" size="0.014 0.012" rgba="1 0 0 0" contype="1" conaffinity="1" condim="3" mass="0.08" solimp="0.95 0.99 0.001" solref="0.01 1" friction="1.2 0.02 0.002"/>
+            <site name="w_pawn_1_site" pos="0 0 0" size="0.02 0.02 0.02" rgba="0 0 0 0"/>
+        </body>
+        <body name="w_rook_1" pos="1.425 0.995 0.4130">
+            <joint type="free" damping="5.0"/>
+            <geom type="mesh" mesh="chess_rook_mesh" material="white_piece" pos="0 0 0.0050" mass="0" contype="2" conaffinity="2" friction="1.2 0.02 0.002"/>
+            <geom type="cylinder" size="0.014 0.012" rgba="1 0 0 0" contype="1" conaffinity="1" condim="3" mass="0.08" solimp="0.95 0.99 0.001" solref="0.01 1" friction="1.2 0.02 0.002"/>
+            <site name="w_rook_1_site" pos="0 0 0" size="0.02 0.02 0.02" rgba="0 0 0 0"/>
+        </body>
+        <body name="w_pawn_2" pos="1.355 0.925 0.4130">
+            <joint type="free" damping="5.0"/>
+            <geom type="mesh" mesh="chess_pawn_mesh" material="white_piece" pos="0 0 0.0040" mass="0" contype="2" conaffinity="2" friction="1.2 0.02 0.002"/>
+            <geom type="cylinder" size="0.014 0.012" rgba="1 0 0 0" contype="1" conaffinity="1" condim="3" mass="0.08" solimp="0.95 0.99 0.001" solref="0.01 1" friction="1.2 0.02 0.002"/>
+            <site name="w_pawn_2_site" pos="0 0 0" size="0.02 0.02 0.02" rgba="0 0 0 0"/>
+        </body>
+        <body name="w_knight_1" pos="1.355 0.995 0.4130">
+            <joint type="free" damping="5.0"/>
+            <geom type="mesh" mesh="chess_knight_mesh" material="white_piece" pos="0 0 0.0050" mass="0" contype="2" conaffinity="2" friction="1.2 0.02 0.002"/>
+            <geom type="cylinder" size="0.014 0.012" rgba="1 0 0 0" contype="1" conaffinity="1" condim="3" mass="0.08" solimp="0.95 0.99 0.001" solref="0.01 1" friction="1.2 0.02 0.002"/>
+            <site name="w_knight_1_site" pos="0 0 0" size="0.02 0.02 0.02" rgba="0 0 0 0"/>
+        </body>
+        <body name="w_pawn_3" pos="1.285 0.925 0.4130">
+            <joint type="free" damping="5.0"/>
+            <geom type="mesh" mesh="chess_pawn_mesh" material="white_piece" pos="0 0 0.0040" mass="0" contype="2" conaffinity="2" friction="1.2 0.02 0.002"/>
+            <geom type="cylinder" size="0.014 0.012" rgba="1 0 0 0" contype="1" conaffinity="1" condim="3" mass="0.08" solimp="0.95 0.99 0.001" solref="0.01 1" friction="1.2 0.02 0.002"/>
+            <site name="w_pawn_3_site" pos="0 0 0" size="0.02 0.02 0.02" rgba="0 0 0 0"/>
+        </body>
+        <body name="w_bishop_1" pos="1.285 0.995 0.4130">
+            <joint type="free" damping="5.0"/>
+            <geom type="mesh" mesh="chess_bishop_mesh" material="white_piece" pos="0 0 0.0050" mass="0" contype="2" conaffinity="2" friction="1.2 0.02 0.002"/>
+            <geom type="cylinder" size="0.014 0.012" rgba="1 0 0 0" contype="1" conaffinity="1" condim="3" mass="0.08" solimp="0.95 0.99 0.001" solref="0.01 1" friction="1.2 0.02 0.002"/>
+            <site name="w_bishop_1_site" pos="0 0 0" size="0.02 0.02 0.02" rgba="0 0 0 0"/>
+        </body>
+        <body name="w_pawn_4" pos="1.215 0.925 0.4130">
+            <joint type="free" damping="5.0"/>
+            <geom type="mesh" mesh="chess_pawn_mesh" material="white_piece" pos="0 0 0.0040" mass="0" contype="2" conaffinity="2" friction="1.2 0.02 0.002"/>
+            <geom type="cylinder" size="0.014 0.012" rgba="1 0 0 0" contype="1" conaffinity="1" condim="3" mass="0.08" solimp="0.95 0.99 0.001" solref="0.01 1" friction="1.2 0.02 0.002"/>
+            <site name="w_pawn_4_site" pos="0 0 0" size="0.02 0.02 0.02" rgba="0 0 0 0"/>
+        </body>
+        <body name="w_queen" pos="1.215 0.995 0.4130">
+            <joint type="free" damping="5.0"/>
+            <geom type="mesh" mesh="chess_queen_mesh" material="white_piece" pos="0 0 0.0060" mass="0" contype="2" conaffinity="2" friction="1.2 0.02 0.002"/>
+            <geom type="cylinder" size="0.014 0.012" rgba="1 0 0 0" contype="1" conaffinity="1" condim="3" mass="0.08" solimp="0.95 0.99 0.001" solref="0.01 1" friction="1.2 0.02 0.002"/>
+            <site name="w_queen_site" pos="0 0 0" size="0.02 0.02 0.02" rgba="0 0 0 0"/>
+        </body>
+        <body name="w_pawn_5" pos="1.145 0.925 0.4130">
+            <joint type="free" damping="5.0"/>
+            <geom type="mesh" mesh="chess_pawn_mesh" material="white_piece" pos="0 0 0.0040" mass="0" contype="2" conaffinity="2" friction="1.2 0.02 0.002"/>
+            <geom type="cylinder" size="0.014 0.012" rgba="1 0 0 0" contype="1" conaffinity="1" condim="3" mass="0.08" solimp="0.95 0.99 0.001" solref="0.01 1" friction="1.2 0.02 0.002"/>
+            <site name="w_pawn_5_site" pos="0 0 0" size="0.02 0.02 0.02" rgba="0 0 0 0"/>
+        </body>
+        <body name="w_king" pos="1.145 0.995 0.4130">
+            <joint type="free" damping="5.0"/>
+            <geom type="mesh" mesh="chess_king_mesh" material="white_piece" pos="0 0 0.0060" mass="0" contype="2" conaffinity="2" friction="1.2 0.02 0.002"/>
+            <geom type="cylinder" size="0.014 0.012" rgba="1 0 0 0" contype="1" conaffinity="1" condim="3" mass="0.08" solimp="0.95 0.99 0.001" solref="0.01 1" friction="1.2 0.02 0.002"/>
+            <site name="w_king_site" pos="0 0 0" size="0.02 0.02 0.02" rgba="0 0 0 0"/>
+        </body>
+        <body name="w_pawn_6" pos="1.075 0.925 0.4130">
+            <joint type="free" damping="5.0"/>
+            <geom type="mesh" mesh="chess_pawn_mesh" material="white_piece" pos="0 0 0.0040" mass="0" contype="2" conaffinity="2" friction="1.2 0.02 0.002"/>
+            <geom type="cylinder" size="0.014 0.012" rgba="1 0 0 0" contype="1" conaffinity="1" condim="3" mass="0.08" solimp="0.95 0.99 0.001" solref="0.01 1" friction="1.2 0.02 0.002"/>
+            <site name="w_pawn_6_site" pos="0 0 0" size="0.02 0.02 0.02" rgba="0 0 0 0"/>
+        </body>
+        <body name="w_bishop_2" pos="1.075 0.995 0.4130">
+            <joint type="free" damping="5.0"/>
+            <geom type="mesh" mesh="chess_bishop_mesh" material="white_piece" pos="0 0 0.0050" mass="0" contype="2" conaffinity="2" friction="1.2 0.02 0.002"/>
+            <geom type="cylinder" size="0.014 0.012" rgba="1 0 0 0" contype="1" conaffinity="1" condim="3" mass="0.08" solimp="0.95 0.99 0.001" solref="0.01 1" friction="1.2 0.02 0.002"/>
+            <site name="w_bishop_2_site" pos="0 0 0" size="0.02 0.02 0.02" rgba="0 0 0 0"/>
+        </body>
+        <body name="w_pawn_7" pos="1.005 0.925 0.4130">
+            <joint type="free" damping="5.0"/>
+            <geom type="mesh" mesh="chess_pawn_mesh" material="white_piece" pos="0 0 0.0040" mass="0" contype="2" conaffinity="2" friction="1.2 0.02 0.002"/>
+            <geom type="cylinder" size="0.014 0.012" rgba="1 0 0 0" contype="1" conaffinity="1" condim="3" mass="0.08" solimp="0.95 0.99 0.001" solref="0.01 1" friction="1.2 0.02 0.002"/>
+            <site name="w_pawn_7_site" pos="0 0 0" size="0.02 0.02 0.02" rgba="0 0 0 0"/>
+        </body>
+        <body name="w_knight_2" pos="1.005 0.995 0.4130">
+            <joint type="free" damping="5.0"/>
+            <geom type="mesh" mesh="chess_knight_mesh" material="white_piece" pos="0 0 0.0050" mass="0" contype="2" conaffinity="2" friction="1.2 0.02 0.002"/>
+            <geom type="cylinder" size="0.014 0.012" rgba="1 0 0 0" contype="1" conaffinity="1" condim="3" mass="0.08" solimp="0.95 0.99 0.001" solref="0.01 1" friction="1.2 0.02 0.002"/>
+            <site name="w_knight_2_site" pos="0 0 0" size="0.02 0.02 0.02" rgba="0 0 0 0"/>
+        </body>
+        <body name="w_pawn_8" pos="0.935 0.925 0.4130">
+            <joint type="free" damping="5.0"/>
+            <geom type="mesh" mesh="chess_pawn_mesh" material="white_piece" pos="0 0 0.0040" mass="0" contype="2" conaffinity="2" friction="1.2 0.02 0.002"/>
+            <geom type="cylinder" size="0.014 0.012" rgba="1 0 0 0" contype="1" conaffinity="1" condim="3" mass="0.08" solimp="0.95 0.99 0.001" solref="0.01 1" friction="1.2 0.02 0.002"/>
+            <site name="w_pawn_8_site" pos="0 0 0" size="0.02 0.02 0.02" rgba="0 0 0 0"/>
+        </body>
+        <body name="w_rook_2" pos="0.935 0.995 0.4130">
+            <joint type="free" damping="5.0"/>
+            <geom type="mesh" mesh="chess_rook_mesh" material="white_piece" pos="0 0 0.0050" mass="0" contype="2" conaffinity="2" friction="1.2 0.02 0.002"/>
+            <geom type="cylinder" size="0.014 0.012" rgba="1 0 0 0" contype="1" conaffinity="1" condim="3" mass="0.08" solimp="0.95 0.99 0.001" solref="0.01 1" friction="1.2 0.02 0.002"/>
+            <site name="w_rook_2_site" pos="0 0 0" size="0.02 0.02 0.02" rgba="0 0 0 0"/>
+        </body>
+        <body name="b_pawn_1" pos="1.425 0.575 0.4130">
+            <joint type="free" damping="5.0"/>
+            <geom type="mesh" mesh="chess_pawn_mesh" material="black_piece" pos="0 0 0.0040" mass="0" contype="2" conaffinity="2" friction="1.2 0.02 0.002"/>
+            <geom type="cylinder" size="0.014 0.012" rgba="1 0 0 0" contype="1" conaffinity="1" condim="3" mass="0.08" solimp="0.95 0.99 0.001" solref="0.01 1" friction="1.2 0.02 0.002"/>
+            <site name="b_pawn_1_site" pos="0 0 0" size="0.02 0.02 0.02" rgba="0 0 0 0"/>
+        </body>
+        <body name="b_rook_1" pos="1.425 0.505 0.4130">
+            <joint type="free" damping="5.0"/>
+            <geom type="mesh" mesh="chess_rook_mesh" material="black_piece" pos="0 0 0.0050" mass="0" contype="2" conaffinity="2" friction="1.2 0.02 0.002"/>
+            <geom type="cylinder" size="0.014 0.012" rgba="1 0 0 0" contype="1" conaffinity="1" condim="3" mass="0.08" solimp="0.95 0.99 0.001" solref="0.01 1" friction="1.2 0.02 0.002"/>
+            <site name="b_rook_1_site" pos="0 0 0" size="0.02 0.02 0.02" rgba="0 0 0 0"/>
+        </body>
+        <body name="b_pawn_2" pos="1.355 0.575 0.4130">
+            <joint type="free" damping="5.0"/>
+            <geom type="mesh" mesh="chess_pawn_mesh" material="black_piece" pos="0 0 0.0040" mass="0" contype="2" conaffinity="2" friction="1.2 0.02 0.002"/>
+            <geom type="cylinder" size="0.014 0.012" rgba="1 0 0 0" contype="1" conaffinity="1" condim="3" mass="0.08" solimp="0.95 0.99 0.001" solref="0.01 1" friction="1.2 0.02 0.002"/>
+            <site name="b_pawn_2_site" pos="0 0 0" size="0.02 0.02 0.02" rgba="0 0 0 0"/>
+        </body>
+        <body name="b_knight_1" pos="1.355 0.505 0.4130">
+            <joint type="free" damping="5.0"/>
+            <geom type="mesh" mesh="chess_knight_mesh" material="black_piece" pos="0 0 0.0050" mass="0" contype="2" conaffinity="2" friction="1.2 0.02 0.002"/>
+            <geom type="cylinder" size="0.014 0.012" rgba="1 0 0 0" contype="1" conaffinity="1" condim="3" mass="0.08" solimp="0.95 0.99 0.001" solref="0.01 1" friction="1.2 0.02 0.002"/>
+            <site name="b_knight_1_site" pos="0 0 0" size="0.02 0.02 0.02" rgba="0 0 0 0"/>
+        </body>
+        <body name="b_pawn_3" pos="1.285 0.575 0.4130">
+            <joint type="free" damping="5.0"/>
+            <geom type="mesh" mesh="chess_pawn_mesh" material="black_piece" pos="0 0 0.0040" mass="0" contype="2" conaffinity="2" friction="1.2 0.02 0.002"/>
+            <geom type="cylinder" size="0.014 0.012" rgba="1 0 0 0" contype="1" conaffinity="1" condim="3" mass="0.08" solimp="0.95 0.99 0.001" solref="0.01 1" friction="1.2 0.02 0.002"/>
+            <site name="b_pawn_3_site" pos="0 0 0" size="0.02 0.02 0.02" rgba="0 0 0 0"/>
+        </body>
+        <body name="b_bishop_1" pos="1.285 0.505 0.4130">
+            <joint type="free" damping="5.0"/>
+            <geom type="mesh" mesh="chess_bishop_mesh" material="black_piece" pos="0 0 0.0050" mass="0" contype="2" conaffinity="2" friction="1.2 0.02 0.002"/>
+            <geom type="cylinder" size="0.014 0.012" rgba="1 0 0 0" contype="1" conaffinity="1" condim="3" mass="0.08" solimp="0.95 0.99 0.001" solref="0.01 1" friction="1.2 0.02 0.002"/>
+            <site name="b_bishop_1_site" pos="0 0 0" size="0.02 0.02 0.02" rgba="0 0 0 0"/>
+        </body>
+        <body name="b_pawn_4" pos="1.215 0.575 0.4130">
+            <joint type="free" damping="5.0"/>
+            <geom type="mesh" mesh="chess_pawn_mesh" material="black_piece" pos="0 0 0.0040" mass="0" contype="2" conaffinity="2" friction="1.2 0.02 0.002"/>
+            <geom type="cylinder" size="0.014 0.012" rgba="1 0 0 0" contype="1" conaffinity="1" condim="3" mass="0.08" solimp="0.95 0.99 0.001" solref="0.01 1" friction="1.2 0.02 0.002"/>
+            <site name="b_pawn_4_site" pos="0 0 0" size="0.02 0.02 0.02" rgba="0 0 0 0"/>
+        </body>
+        <body name="b_queen" pos="1.215 0.505 0.4130">
+            <joint type="free" damping="5.0"/>
+            <geom type="mesh" mesh="chess_queen_mesh" material="black_piece" pos="0 0 0.0060" mass="0" contype="2" conaffinity="2" friction="1.2 0.02 0.002"/>
+            <geom type="cylinder" size="0.014 0.012" rgba="1 0 0 0" contype="1" conaffinity="1" condim="3" mass="0.08" solimp="0.95 0.99 0.001" solref="0.01 1" friction="1.2 0.02 0.002"/>
+            <site name="b_queen_site" pos="0 0 0" size="0.02 0.02 0.02" rgba="0 0 0 0"/>
+        </body>
+        <body name="b_pawn_5" pos="1.145 0.575 0.4130">
+            <joint type="free" damping="5.0"/>
+            <geom type="mesh" mesh="chess_pawn_mesh" material="black_piece" pos="0 0 0.0040" mass="0" contype="2" conaffinity="2" friction="1.2 0.02 0.002"/>
+            <geom type="cylinder" size="0.014 0.012" rgba="1 0 0 0" contype="1" conaffinity="1" condim="3" mass="0.08" solimp="0.95 0.99 0.001" solref="0.01 1" friction="1.2 0.02 0.002"/>
+            <site name="b_pawn_5_site" pos="0 0 0" size="0.02 0.02 0.02" rgba="0 0 0 0"/>
+        </body>
+        <body name="b_king" pos="1.145 0.505 0.4130">
+            <joint type="free" damping="5.0"/>
+            <geom type="mesh" mesh="chess_king_mesh" material="black_piece" pos="0 0 0.0060" mass="0" contype="2" conaffinity="2" friction="1.2 0.02 0.002"/>
+            <geom type="cylinder" size="0.014 0.012" rgba="1 0 0 0" contype="1" conaffinity="1" condim="3" mass="0.08" solimp="0.95 0.99 0.001" solref="0.01 1" friction="1.2 0.02 0.002"/>
+            <site name="b_king_site" pos="0 0 0" size="0.02 0.02 0.02" rgba="0 0 0 0"/>
+        </body>
+        <body name="b_pawn_6" pos="1.075 0.575 0.4130">
+            <joint type="free" damping="5.0"/>
+            <geom type="mesh" mesh="chess_pawn_mesh" material="black_piece" pos="0 0 0.0040" mass="0" contype="2" conaffinity="2" friction="1.2 0.02 0.002"/>
+            <geom type="cylinder" size="0.014 0.012" rgba="1 0 0 0" contype="1" conaffinity="1" condim="3" mass="0.08" solimp="0.95 0.99 0.001" solref="0.01 1" friction="1.2 0.02 0.002"/>
+            <site name="b_pawn_6_site" pos="0 0 0" size="0.02 0.02 0.02" rgba="0 0 0 0"/>
+        </body>
+        <body name="b_bishop_2" pos="1.075 0.505 0.4130">
+            <joint type="free" damping="5.0"/>
+            <geom type="mesh" mesh="chess_bishop_mesh" material="black_piece" pos="0 0 0.0050" mass="0" contype="2" conaffinity="2" friction="1.2 0.02 0.002"/>
+            <geom type="cylinder" size="0.014 0.012" rgba="1 0 0 0" contype="1" conaffinity="1" condim="3" mass="0.08" solimp="0.95 0.99 0.001" solref="0.01 1" friction="1.2 0.02 0.002"/>
+            <site name="b_bishop_2_site" pos="0 0 0" size="0.02 0.02 0.02" rgba="0 0 0 0"/>
+        </body>
+        <body name="b_pawn_7" pos="1.005 0.575 0.4130">
+            <joint type="free" damping="5.0"/>
+            <geom type="mesh" mesh="chess_pawn_mesh" material="black_piece" pos="0 0 0.0040" mass="0" contype="2" conaffinity="2" friction="1.2 0.02 0.002"/>
+            <geom type="cylinder" size="0.014 0.012" rgba="1 0 0 0" contype="1" conaffinity="1" condim="3" mass="0.08" solimp="0.95 0.99 0.001" solref="0.01 1" friction="1.2 0.02 0.002"/>
+            <site name="b_pawn_7_site" pos="0 0 0" size="0.02 0.02 0.02" rgba="0 0 0 0"/>
+        </body>
+        <body name="b_knight_2" pos="1.005 0.505 0.4130">
+            <joint type="free" damping="5.0"/>
+            <geom type="mesh" mesh="chess_knight_mesh" material="black_piece" pos="0 0 0.0050" mass="0" contype="2" conaffinity="2" friction="1.2 0.02 0.002"/>
+            <geom type="cylinder" size="0.014 0.012" rgba="1 0 0 0" contype="1" conaffinity="1" condim="3" mass="0.08" solimp="0.95 0.99 0.001" solref="0.01 1" friction="1.2 0.02 0.002"/>
+            <site name="b_knight_2_site" pos="0 0 0" size="0.02 0.02 0.02" rgba="0 0 0 0"/>
+        </body>
+        <body name="b_pawn_8" pos="0.935 0.575 0.4130">
+            <joint type="free" damping="5.0"/>
+            <geom type="mesh" mesh="chess_pawn_mesh" material="black_piece" pos="0 0 0.0040" mass="0" contype="2" conaffinity="2" friction="1.2 0.02 0.002"/>
+            <geom type="cylinder" size="0.014 0.012" rgba="1 0 0 0" contype="1" conaffinity="1" condim="3" mass="0.08" solimp="0.95 0.99 0.001" solref="0.01 1" friction="1.2 0.02 0.002"/>
+            <site name="b_pawn_8_site" pos="0 0 0" size="0.02 0.02 0.02" rgba="0 0 0 0"/>
+        </body>
+        <body name="b_rook_2" pos="0.935 0.505 0.4130">
+            <joint type="free" damping="5.0"/>
+            <geom type="mesh" mesh="chess_rook_mesh" material="black_piece" pos="0 0 0.0050" mass="0" contype="2" conaffinity="2" friction="1.2 0.02 0.002"/>
+            <geom type="cylinder" size="0.014 0.012" rgba="1 0 0 0" contype="1" conaffinity="1" condim="3" mass="0.08" solimp="0.95 0.99 0.001" solref="0.01 1" friction="1.2 0.02 0.002"/>
+            <site name="b_rook_2_site" pos="0 0 0" size="0.02 0.02 0.02" rgba="0 0 0 0"/>
+        </body>
+        <body name="w_spare_queen" pos="1.030 1.050 -0.0500">
+            <joint type="free" damping="5.0"/>
+            <geom type="mesh" mesh="chess_queen_mesh" material="white_piece" rgba="0 0 0 0" pos="0 0 0.0060" mass="0" contype="0" conaffinity="0" friction="1.2 0.02 0.002"/>
+            <geom type="cylinder" size="0.014 0.012" rgba="0 0 0 0" contype="0" conaffinity="0" condim="3" mass="0.08" solimp="0.95 0.99 0.001" solref="0.01 1" friction="1.2 0.02 0.002"/>
+        </body>
+        <body name="b_spare_queen" pos="1.030 0.450 -0.0500">
+            <joint type="free" damping="5.0"/>
+            <geom type="mesh" mesh="chess_queen_mesh" material="black_piece" rgba="0 0 0 0" pos="0 0 0.0060" mass="0" contype="0" conaffinity="0" friction="1.2 0.02 0.002"/>
+            <geom type="cylinder" size="0.014 0.012" rgba="0 0 0 0" contype="0" conaffinity="0" condim="3" mass="0.08" solimp="0.95 0.99 0.001" solref="0.01 1" friction="1.2 0.02 0.002"/>
+        </body>
+        <body name="w_spare_rook" pos="1.130 1.050 -0.0500">
+            <joint type="free" damping="5.0"/>
+            <geom type="mesh" mesh="chess_rook_mesh" material="white_piece" rgba="0 0 0 0" pos="0 0 0.0050" mass="0" contype="0" conaffinity="0" friction="1.2 0.02 0.002"/>
+            <geom type="cylinder" size="0.014 0.012" rgba="0 0 0 0" contype="0" conaffinity="0" condim="3" mass="0.08" solimp="0.95 0.99 0.001" solref="0.01 1" friction="1.2 0.02 0.002"/>
+        </body>
+        <body name="b_spare_rook" pos="1.130 0.450 -0.0500">
+            <joint type="free" damping="5.0"/>
+            <geom type="mesh" mesh="chess_rook_mesh" material="black_piece" rgba="0 0 0 0" pos="0 0 0.0050" mass="0" contype="0" conaffinity="0" friction="1.2 0.02 0.002"/>
+            <geom type="cylinder" size="0.014 0.012" rgba="0 0 0 0" contype="0" conaffinity="0" condim="3" mass="0.08" solimp="0.95 0.99 0.001" solref="0.01 1" friction="1.2 0.02 0.002"/>
+        </body>
+        <body name="w_spare_bishop" pos="1.230 1.050 -0.0500">
+            <joint type="free" damping="5.0"/>
+            <geom type="mesh" mesh="chess_bishop_mesh" material="white_piece" rgba="0 0 0 0" pos="0 0 0.0050" mass="0" contype="0" conaffinity="0" friction="1.2 0.02 0.002"/>
+            <geom type="cylinder" size="0.014 0.012" rgba="0 0 0 0" contype="0" conaffinity="0" condim="3" mass="0.08" solimp="0.95 0.99 0.001" solref="0.01 1" friction="1.2 0.02 0.002"/>
+        </body>
+        <body name="b_spare_bishop" pos="1.230 0.450 -0.0500">
+            <joint type="free" damping="5.0"/>
+            <geom type="mesh" mesh="chess_bishop_mesh" material="black_piece" rgba="0 0 0 0" pos="0 0 0.0050" mass="0" contype="0" conaffinity="0" friction="1.2 0.02 0.002"/>
+            <geom type="cylinder" size="0.014 0.012" rgba="0 0 0 0" contype="0" conaffinity="0" condim="3" mass="0.08" solimp="0.95 0.99 0.001" solref="0.01 1" friction="1.2 0.02 0.002"/>
+        </body>
+        <body name="w_spare_knight" pos="1.330 1.050 -0.0500">
+            <joint type="free" damping="5.0"/>
+            <geom type="mesh" mesh="chess_knight_mesh" material="white_piece" rgba="0 0 0 0" pos="0 0 0.0050" mass="0" contype="0" conaffinity="0" friction="1.2 0.02 0.002"/>
+            <geom type="cylinder" size="0.014 0.012" rgba="0 0 0 0" contype="0" conaffinity="0" condim="3" mass="0.08" solimp="0.95 0.99 0.001" solref="0.01 1" friction="1.2 0.02 0.002"/>
+        </body>
+        <body name="b_spare_knight" pos="1.330 0.450 -0.0500">
+            <joint type="free" damping="5.0"/>
+            <geom type="mesh" mesh="chess_knight_mesh" material="black_piece" rgba="0 0 0 0" pos="0 0 0.0050" mass="0" contype="0" conaffinity="0" friction="1.2 0.02 0.002"/>
+            <geom type="cylinder" size="0.014 0.012" rgba="0 0 0 0" contype="0" conaffinity="0" condim="3" mass="0.08" solimp="0.95 0.99 0.001" solref="0.01 1" friction="1.2 0.02 0.002"/>
+        </body>
+        <body name="white_graveyard" pos="1.005 0.375 0.412">
+            <geom type="box" size="0.100 0.090 0.012" rgba="0.5 0.5 0.5 0.7"/>
+        </body>
+        <body name="black_graveyard" pos="1.225 0.375 0.412">
+            <geom type="box" size="0.100 0.090 0.012" rgba="0.5 0.5 0.5 0.7"/>
+        </body>
+    </worldbody>
+</mujoco>

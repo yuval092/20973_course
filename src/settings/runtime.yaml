@@ -1,0 +1,64 @@
+board_center: [1.18, 0.75, 0.4]
+square_size: 0.07
+table_height: 0.4
+z_grasp: 0.413
+z_safe: 0.56
+
+n_substeps: 20
+action_scale: 0.05
+goal_tolerance: 0.05
+placement_tolerance: 0.025
+max_steps_per_phase: 250
+fetch_policy_horizon: 50
+settle_steps: 15
+retract_steps: 25
+gripper_actuation_steps: 12
+grip_contact_tolerance: 0.025
+piece_follow_tolerance: 0.04
+piece_drift_tolerance: 0.01
+release_settle_steps: 25
+release_velocity_tolerance: 0.01
+release_gripper_open_tolerance: 0.004
+release_clearance_margin: 0.08
+final_settle_steps: 120
+pregrasp_gripper_opening: 0.025
+grasp_descend_offset: 0.015
+close_descend_offset: 0.002
+close_descend_steps: 50
+workspace_xy_margin: 0.12
+workspace_z_min: 0.42
+workspace_z_max: 0.9
+viewer_step_delay_sec: 0
+reachable_x_min: 0.9
+reachable_x_max: 1.48
+reachable_y_min: 0.28
+reachable_y_max: 1.18
+reachable_z_min: 0.4
+reachable_z_max: 0.82
+fetch_init_grip: [1.3419, 0.7491, 0.575]
+policy_xy_radius: 0.15
+policy_z_min: 0.41
+policy_z_max: 0.75
+
+gripper_open: 0.05
+gripper_closed: 0.0
+
+l_finger_actuator: robot0:l_gripper_finger_joint
+r_finger_actuator: robot0:r_gripper_finger_joint
+grip_site: robot0:grip
+
+white_graveyard_origin: [0.93, 0.30, 0.425]
+black_graveyard_origin: [1.15, 0.30, 0.425]
+graveyard_spacing: 0.05
+graveyard_cols: 4
+graveyard_platform_half_extents: [0.10, 0.09, 0.012]
+graveyard_platform_height: 0.024
+
+stockfish_paths: [/usr/games/stockfish, /usr/local/bin/stockfish, stockfish]
+stockfish_time_limit: 0.1
+
+hf_repo_id: sb3/tqc-FetchPickAndPlace-v1
+hf_filename: tqc-FetchPickAndPlace-v1.zip
+
+tilt_threshold_cos: 0.966
+displacement_threshold: 0.4
