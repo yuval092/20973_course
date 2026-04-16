@@ -264,24 +264,27 @@ def generate_chess_world() -> str:
     def add_spare_piece(name, x, y, color, piece_type):
         material = "white_piece" if color == "white" else "black_piece"
         mesh_z = mesh_z_offsets[piece_type]
-        xml.append(f'        <body name="{name}" pos="{x:.3f} {y:.3f} -0.0500">')
+        xml.append(f'        <body name=\"{name}\" pos=\"{x:.3f} {y:.3f} -0.0500\">')
         xml.append('            <joint type="free" damping="5.0"/>')
         xml.append(
-            f'            <geom type="mesh" mesh="chess_{piece_type}_mesh" material="{material}" rgba="0 0 0 0" '
+            f'            <geom type="mesh" mesh="chess_{piece_type}_mesh" material=\"{material}\" rgba="0 0 0 0" '
             f'pos="0 0 {mesh_z:.4f}" mass="0" contype="0" conaffinity="0" friction="1.2 0.02 0.002"/>'
         )
         xml.append(
-            f'            <geom type="cylinder" size="{hitbox_half_extent_xy} '
-            f'{hitbox_half_extent_z}" rgba="0 0 0 0" contype="0" conaffinity="0" condim="3" '
+            f'            <geom type="cylinder" size=\"{hitbox_half_extent_xy} '
+            f'{hitbox_half_extent_z}\" rgba="0 0 0 0" contype="0" conaffinity="0" condim="3" '
             f'mass="0.08" solimp="0.95 0.99 0.001" solref="0.01 1" friction="1.2 0.02 0.002"/>'
         )
         xml.append('        </body>')
 
     # Promotion spares remain hidden below the table until a pawn is swapped
     # out for its promoted replacement during runtime.
-    for idx, p_type in enumerate(spare_types):
-        add_spare_piece(f"w_spare_{p_type}", BOARD_CENTER[0] + idx * 0.1 - 0.15, BOARD_CENTER[1] + 0.3, "white", p_type)
-        add_spare_piece(f"b_spare_{p_type}", BOARD_CENTER[0] + idx * 0.1 - 0.15, BOARD_CENTER[1] - 0.3, "black", p_type)
+    # Generate 2 of each spare type per color
+    for count in (1, 2):
+        for idx, p_type in enumerate(spare_types):
+            x_offset = (idx * 0.1 - 0.15) + (count - 1) * 0.4
+            add_spare_piece(f"w_spare_{p_type}_{count}", BOARD_CENTER[0] + x_offset, BOARD_CENTER[1] + 0.3, "white", p_type)
+            add_spare_piece(f"b_spare_{p_type}_{count}", BOARD_CENTER[0] + x_offset, BOARD_CENTER[1] - 0.3, "black", p_type)
 
     graveyard_half_x, graveyard_half_y, graveyard_half_z = GRAVEYARD_PLATFORM_HALF_EXTENTS
     graveyard_top_z = TABLE_HEIGHT + GRAVEYARD_PLATFORM_HEIGHT

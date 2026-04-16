@@ -20,7 +20,84 @@ def _load_yaml_settings(name: str) -> dict:
         return yaml.safe_load(handle)
 
 
+def _validate_config(config: dict) -> None:
+    schema = {
+        "board_center": (list, tuple),
+        "square_size": (int, float),
+        "table_height": (int, float),
+        "z_grasp": (int, float),
+        "z_safe": (int, float),
+        "n_substeps": int,
+        "action_scale": (int, float),
+        "goal_tolerance": (int, float),
+        "placement_tolerance": (int, float),
+        "max_steps_per_phase": int,
+        "fetch_policy_horizon": int,
+        "settle_steps": int,
+        "retract_steps": int,
+        "gripper_actuation_steps": int,
+        "grip_contact_tolerance": (int, float),
+        "piece_follow_tolerance": (int, float),
+        "piece_drift_tolerance": (int, float),
+        "release_settle_steps": int,
+        "release_velocity_tolerance": (int, float),
+        "release_gripper_open_tolerance": (int, float),
+        "release_clearance_margin": (int, float),
+        "final_settle_steps": int,
+        "pregrasp_gripper_opening": (int, float),
+        "grasp_descend_offset": (int, float),
+        "close_descend_offset": (int, float),
+        "close_descend_steps": int,
+        "workspace_xy_margin": (int, float),
+        "workspace_z_min": (int, float),
+        "workspace_z_max": (int, float),
+        "viewer_step_delay_sec": (int, float),
+        "reachable_x_min": (int, float),
+        "reachable_x_max": (int, float),
+        "reachable_y_min": (int, float),
+        "reachable_y_max": (int, float),
+        "reachable_z_min": (int, float),
+        "reachable_z_max": (int, float),
+        "fetch_init_grip": (list, tuple),
+        "policy_xy_radius": (int, float),
+        "policy_z_min": (int, float),
+        "policy_z_max": (int, float),
+        "gripper_open": (int, float),
+        "gripper_closed": (int, float),
+        "l_finger_actuator": str,
+        "r_finger_actuator": str,
+        "grip_site": str,
+        "white_graveyard_origin": (list, tuple),
+        "black_graveyard_origin": (list, tuple),
+        "graveyard_spacing": (int, float),
+        "graveyard_cols": int,
+        "graveyard_platform_half_extents": (list, tuple),
+        "graveyard_platform_height": (int, float),
+        "stockfish_paths": list,
+        "stockfish_time_limit": (int, float),
+        "hf_repo_id": str,
+        "hf_filename": str,
+        "tilt_threshold_cos": (int, float),
+        "displacement_threshold": (int, float),
+    }
+    missing = []
+    invalid_types = []
+    for k, t in schema.items():
+        if k not in config:
+            missing.append(k)
+        elif not isinstance(config[k], t):
+            invalid_types.append(f"{k} (expected {t}, got {type(config[k]).__name__})")
+            
+    if missing or invalid_types:
+        err = "Config validation failed.\n"
+        if missing:
+            err += f"Missing keys: {', '.join(missing)}\n"
+        if invalid_types:
+            err += f"Invalid types: {', '.join(invalid_types)}\n"
+        raise ValueError(err)
+
 _RUNTIME = _load_yaml_settings("runtime.yaml")
+_validate_config(_RUNTIME)
 
 
 # Board geometry

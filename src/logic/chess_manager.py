@@ -14,6 +14,23 @@ class ChessGameManager:
 
     def __init__(self):
         self.board = chess.Board()
+        self.engine = self._open_engine()
+
+    def __enter__(self) -> ChessGameManager:
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.close()
+
+    def close(self):
+        """Close the Stockfish engine."""
+        if hasattr(self, "engine") and self.engine:
+            try:
+                self.engine.quit()
+            except Exception:
+                pass
+            finally:
+                self.engine = None
 
     def validate_move(self, uci: str) -> bool:
         """Return True when a UCI move is syntactically valid and legal."""
@@ -47,16 +64,10 @@ class ChessGameManager:
 
     def get_ai_move(self, limit_time: float = STOCKFISH_TIME_LIMIT) -> chess.Move:
         """Get the best move from Stockfish for the current position."""
-        engine = self._open_engine()
         try:
-            result = engine.play(self.board, chess.engine.Limit(time=limit_time))
+            result = self.engine.play(self.board, chess.engine.Limit(time=limit_time))
             if not result.move:
                 raise AIEngineError("Stockfish failed to suggest a move.")
             return result.move
         except chess.engine.EngineError as e:
             raise AIEngineError(f"Stockfish engine error during play: {e}")
-        finally:
-            try:
-                engine.quit()
-            except Exception:
-                pass

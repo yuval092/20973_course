@@ -100,8 +100,6 @@ class ExecutionController:
     _source_descend_offset_z = 0.03
 
     # Graveyard counters for grid positioning
-    _white_graveyard_count = 0
-    _black_graveyard_count = 0
     _reach_min = np.array([REACHABLE_X_MIN, REACHABLE_Y_MIN, REACHABLE_Z_MIN], dtype=np.float64)
     _reach_max = np.array([REACHABLE_X_MAX, REACHABLE_Y_MAX, REACHABLE_Z_MAX], dtype=np.float64)
     _policy_center = np.array(FETCH_INIT_GRIP, dtype=np.float64)
@@ -397,7 +395,7 @@ class ExecutionController:
     def _resolve_stage_goal(self, stage, stage_targets, src_pos, dest_pos):
         if stage == "PREHOVER_DEST":
             target_xy = dest_pos[:2] - self._current_carry_xy_offset()
-            target_z = Z_SAFE
+            target_z = float(stage_targets["PREHOVER_DEST"][2])
             return np.array([target_xy[0], target_xy[1], target_z], dtype=np.float64)
         if stage == "DESCEND_SRC":
             piece_pos = self.env.get_piece_pos()
@@ -490,14 +488,18 @@ class ExecutionController:
         if self.env is not None and getattr(self.env, "home_grip_pos", None) is not None:
             home_goal = self.env.home_grip_pos
         clearance_z = self._release_clearance_z(dest_pos, home_goal)
+        
+        # Use Z_SAFE for all transit moves.
+        transit_z = Z_SAFE
+            
         return {
             "HOME_RESET": None,
-            "PREHOVER_SRC": np.array([src_pos[0], src_pos[1], Z_SAFE], dtype=np.float64),
+            "PREHOVER_SRC": np.array([src_pos[0], src_pos[1], transit_z], dtype=np.float64),
             "PREGRASP_NARROW": None,
             "DESCEND_SRC": np.array([src_pos[0], src_pos[1], source_approach_z], dtype=np.float64),
             "CLOSE_GRIPPER_ONLY": None,
-            "LIFT_VERIFY": np.array([src_pos[0], src_pos[1], Z_SAFE], dtype=np.float64),
-            "PREHOVER_DEST": np.array([dest_pos[0], dest_pos[1], Z_SAFE], dtype=np.float64),
+            "LIFT_VERIFY": np.array([src_pos[0], src_pos[1], transit_z], dtype=np.float64),
+            "PREHOVER_DEST": np.array([dest_pos[0], dest_pos[1], transit_z], dtype=np.float64),
             "DESCEND_DEST": np.array([dest_pos[0], dest_pos[1], dest_approach_z], dtype=np.float64),
             "OPEN_GRIPPER_ONLY": None,
             "POST_RELEASE_SETTLE": None,
@@ -1114,7 +1116,7 @@ class ExecutionController:
                 f"piece={piece_pos.round(4)} | "
                 f"grip_ok={grip_ok} | "
                 f"drift_ok={drift_ok} | "
-                f"piece_xy_drift={(piece_drift if piece_drift is not None else float('nan')):.4f}"
+                f"piece_xy_drift={(piece_drift if piece_drift is not None else 'N/A')}"
             )
             return grip_ok and drift_ok
 
@@ -1145,7 +1147,7 @@ class ExecutionController:
             f"piece_z_to_grip={piece_z_to_grip:.4f}m | "
             f"piece_lifted={piece_lifted} | "
             f"piece_supported_at_goal={piece_supported_at_goal} | "
-            f"piece_xy_drift={(piece_drift if piece_drift is not None else float('nan')):.4f} | "
+            f"piece_xy_drift={(piece_drift if piece_drift is not None else 'N/A')} | "
             f"success={success}"
         )
         return success

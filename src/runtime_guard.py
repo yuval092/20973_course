@@ -112,7 +112,9 @@ def validate_board_state(
                 f"square={square_name} | piece={piece_name} | up_z={up_z:.4f}"
             )
 
-    BoardObserver(mj_model, mj_data).verify_stability()
+    BoardObserver(mj_model, mj_data).verify_stability(
+        active_piece_names=set(square_to_piece.values())
+    )
 
 
 def detect_physical_instability(

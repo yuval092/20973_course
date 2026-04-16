@@ -134,7 +134,7 @@ def test_arm_motion_does_not_destabilize_board():
     model = mujoco.MjModel.from_xml_path(SCENE_XML)
     data = mujoco.MjData(model)
     env = ChessPickPlaceEnv(model, data)
-    env.set_target("w_spare_queen", data.body("w_spare_queen").xpos.copy())
+    env.set_target("w_spare_queen_1", data.body("w_spare_queen_1").xpos.copy())
 
     initial_positions = {}
     for body_idx in range(model.nbody):
@@ -174,3 +174,36 @@ def test_arm_motion_does_not_destabilize_board():
 
     assert max(drifts) < 0.004
     assert min_piece_z > TABLE_HEIGHT + 0.009
+
+def test_captured_piece_in_graveyard_does_not_trigger_stability_error():
+    model = mujoco.MjModel.from_xml_path(SCENE_XML)
+    data = mujoco.MjData(model)
+    mujoco.mj_forward(model, data)
+    
+    from src.game_runtime import initialize_square_to_piece
+    square_to_piece = initialize_square_to_piece(model, data)
+    active_pieces = set(square_to_piece.values())
+    
+    # Mark a piece as inactive (captured) by removing it from active pieces
+    captured_piece = "w_pawn_1"
+    active_pieces.discard(captured_piece)
+    
+    # Intentionally submerge it below the table to simulate false positive
+    body_id = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_BODY, captured_piece)
+    jnt_adr = model.body_jntadr[body_id]
+    
+    # Set pos below table limit
+    data.qpos[jnt_adr:jnt_adr + 3] = [0.0, 0.0, 0.2]
+    # Set orientation tipped
+    data.qpos[jnt_adr + 3:jnt_adr + 7] = [0.0, 1.0, 0.0, 0.0]
+    mujoco.mj_forward(model, data)
+    
+    observer = BoardObserver(model, data)
+    
+    # Calling without active_pieces filter should raise exception
+    with pytest.raises(StabilityError):
+        observer.verify_stability()
+        
+    # Calling with filter should pass because it skips captured pieces
+    observer.verify_stability(active_piece_names=active_pieces)
+

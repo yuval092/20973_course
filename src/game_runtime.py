@@ -20,7 +20,7 @@ from huggingface_sb3 import load_from_hub
 from sb3_contrib import TQC
 from stable_baselines3.common.buffers import DictReplayBuffer
 
-from src.config import HF_FILENAME, HF_REPO_ID, N_SUBSTEPS, SCENE_XML, Z_GRASP
+from src.config import HF_FILENAME, HF_REPO_ID, N_SUBSTEPS, SCENE_XML, Z_GRASP, Z_SAFE
 from src.control.execution_controller import ExecutionController
 from src.env.chess_pick_place_env import ChessPickPlaceEnv
 from src.exceptions import (
@@ -40,26 +40,11 @@ from src.runtime_guard import (
     validate_board_state,
 )
 
+from src.models import GameSystems, SquareMap
+
 logger = logging.getLogger("robo_chess")
 
-SquareMap = dict[str, str]
 InputFunc = Callable[[str], str]
-
-
-@dataclass
-class GameSystems:
-    """Bootstrapped runtime objects required to run a RoboChess game."""
-
-    mj_model: mujoco.MjModel
-    mj_data: mujoco.MjData
-    env: ChessPickPlaceEnv
-    rl_model: Any
-    manager: ChessGameManager
-    planner: OperationPlanner
-    controller: ExecutionController
-    square_to_piece: SquareMap
-    arm_home_grip: Any
-    check_registry: RuntimeCheckRegistry
 
 
 def teleport_piece(
@@ -90,7 +75,7 @@ def _is_piece_body(body_name: str) -> bool:
         return False
 
     skip_prefixes = ("world", "table", "spare", "graveyard", "robot", "square")
-    if any(body_name.startswith(prefix) or prefix in body_name for prefix in skip_prefixes):
+    if any(body_name.startswith(prefix) for prefix in skip_prefixes):
         return False
 
     return body_name.startswith(("w_", "b_"))
@@ -186,6 +171,7 @@ def bootstrap_game_systems(
         square_to_piece={},
         arm_home_grip=arm_home_grip,
         check_registry=build_default_check_registry(),
+        captured_count={"white": 0, "black": 0},
     )
     dummy_systems.check_registry.run(CheckHook.POST_SCENE_LOAD, CheckContext(hook=CheckHook.POST_SCENE_LOAD, systems=dummy_systems))
     log_event(logger, logging.INFO, "scene_loaded", scene_xml=scene_xml)
@@ -210,6 +196,7 @@ def bootstrap_game_systems(
         square_to_piece=square_to_piece,
         arm_home_grip=arm_home_grip,
         check_registry=dummy_systems.check_registry,
+        captured_count={"white": 0, "black": 0},
     )
 
     def _run_stage_checks(phase: CheckHook, **payload: Any) -> None:
@@ -235,10 +222,14 @@ def bootstrap_game_systems(
     return systems
 
 
-def _update_square_mapping(square_to_piece: SquareMap, target_square: str, dest_square: str) -> None:
+def _update_square_mapping(systems: GameSystems, target_square: str, dest_square: str) -> None:
     """Update the logical square mapping after a successful piece move."""
+    square_to_piece = systems.square_to_piece
     if "graveyard" in dest_square:
         square_to_piece.pop(target_square, None)
+        # Increment capture counter
+        color = "white" if "white" in dest_square else "black"
+        systems.captured_count[color] += 1
         return
 
     if target_square in square_to_piece:
@@ -262,7 +253,20 @@ def handle_promotion(
         chess.KNIGHT: "knight",
     }
     promo_type = promo_map.get(op.promotion, "queen")
-    spare_name = f"{color_prefix}_spare_{promo_type}"
+    
+    # Find an available spare piece of the requested type
+    # We generated 2 of each in generate_xml.py
+    spare_name = None
+    for i in (1, 2):
+        candidate = f"{color_prefix}_spare_{promo_type}_{i}"
+        if candidate not in square_to_piece.values():
+            spare_name = candidate
+            break
+            
+    if spare_name is None:
+        logger.warning("No more spare %s pieces available for %s", promo_type, color_prefix)
+        # Fallback to first one if all are "used", though this shouldn't happen in normal games
+        spare_name = f"{color_prefix}_spare_{promo_type}_1"
 
     gy_pos = controller.get_pos("white_graveyard" if is_white else "black_graveyard")
     teleport_piece(mj_model, mj_data, op.piece_name, gy_pos)
@@ -279,7 +283,7 @@ def handle_promotion(
         elif mj_model.geom_type[geom_id] == mujoco.mjtGeom.mjGEOM_MESH:
             mj_model.geom_contype[geom_id] = 2
             mj_model.geom_conaffinity[geom_id] = 2
-            mj_model.geom_rgba[geom_id] = [1.0, 1.0, 1.0, 1.0]
+            mj_model.geom_rgba[geom_id] = [1.0, 1.0, 1.0, 1.0] if is_white else [0.1, 0.1, 0.1, 1.0]
 
     dest_pos = controller.get_pos(op.dest_square)
     teleport_piece(mj_model, mj_data, spare_name, dest_pos)
@@ -294,16 +298,40 @@ def execute_human_ops(
     ops,
     controller: ExecutionController,
     square_to_piece: SquareMap,
+    systems: GameSystems = None,
+    viewer=None,
 ) -> None:
-    """Execute human move operations via teleportation."""
+    """Execute human move operations via the physical controller or teleportation for captures."""
     for op in ops:
-        target_pos = controller.get_pos(op.dest_square)
-        teleport_piece(mj_model, mj_data, op.piece_name, target_pos)
-        _update_square_mapping(square_to_piece, op.target_square, op.dest_square)
+        if "graveyard" in op.dest_square:
+            target_pos = controller.get_pos(op.dest_square)
+            if systems:
+                color = "white" if "white" in op.dest_square else "black"
+                target_pos = _get_graveyard_grid_pos(target_pos, systems.captured_count[color])
+            teleport_piece(mj_model, mj_data, op.piece_name, target_pos)
+        else:
+            log_event(logger, logging.INFO, "human_execute_op", piece=op.piece_name, src=op.target_square, dest=op.dest_square)
+            result = controller.execute_op(op, viewer=viewer)
+            if not result.success:
+                raise ExecutionError(
+                    f"Physical execution failed for human move {op.piece_name} {op.target_square}->{op.dest_square}: {result.details}"
+                )
+
+        if systems:
+            _update_square_mapping(systems, op.target_square, op.dest_square)
+        else:
+            # Fallback for old tests if systems is not passed
+            if "graveyard" in op.dest_square:
+                square_to_piece.pop(op.target_square, None)
+            elif op.target_square in square_to_piece:
+                square_to_piece[op.dest_square] = square_to_piece.pop(op.target_square)
 
         if op.promotion:
-            handle_promotion(mj_model, mj_data, op, controller, square_to_piece, is_white=True)
+            is_white = op.piece_name.startswith("w_")
+            handle_promotion(mj_model, mj_data, op, controller, square_to_piece, is_white=is_white)
         mujoco.mj_forward(mj_model, mj_data)
+        sync_viewer(viewer, mj_model, mj_data)
+
 
 
 def execute_ai_ops(
@@ -313,12 +341,17 @@ def execute_ai_ops(
     mj_model: mujoco.MjModel,
     mj_data: mujoco.MjData,
     viewer=None,
+    systems: GameSystems = None,
 ) -> None:
     """Execute AI move operations through the physical controller."""
     for op in ops:
         if "graveyard" in op.dest_square:
             log_event(logger, logging.INFO, "ai_teleport_capture", piece=op.piece_name, dest=op.dest_square)
-            teleport_piece(mj_model, mj_data, op.piece_name, controller.get_pos(op.dest_square))
+            target_pos = controller.get_pos(op.dest_square)
+            if systems:
+                color = "white" if "white" in op.dest_square else "black"
+                target_pos = _get_graveyard_grid_pos(target_pos, systems.captured_count[color])
+            teleport_piece(mj_model, mj_data, op.piece_name, target_pos)
         else:
             log_event(logger, logging.INFO, "ai_execute_op", piece=op.piece_name, src=op.target_square, dest=op.dest_square)
             result = controller.execute_op(op, viewer=viewer)
@@ -327,11 +360,29 @@ def execute_ai_ops(
                     f"RL execution failed for {op.piece_name} {op.target_square}->{op.dest_square}: {result.details}"
                 )
 
-        _update_square_mapping(square_to_piece, op.target_square, op.dest_square)
+        if systems:
+            _update_square_mapping(systems, op.target_square, op.dest_square)
+        else:
+            # Fallback
+            if "graveyard" in op.dest_square:
+                square_to_piece.pop(op.target_square, None)
+            elif op.target_square in square_to_piece:
+                square_to_piece[op.dest_square] = square_to_piece.pop(op.target_square)
+
         if op.promotion:
             handle_promotion(mj_model, mj_data, op, controller, square_to_piece, is_white=False)
 
         sync_viewer(viewer, mj_model, mj_data)
+
+
+def _get_graveyard_grid_pos(origin, count: int):
+    """Compute a grid offset for captured pieces in the graveyard."""
+    rows = 4
+    spacing = 0.04
+    row = count % rows
+    col = count // rows
+    offset = [col * spacing, row * spacing, 0]
+    return [origin[i] + offset[i] for i in range(3)]
 
 
 def sync_viewer(viewer, mj_model: mujoco.MjModel, mj_data: mujoco.MjData) -> None:
@@ -347,7 +398,7 @@ def print_game_banner() -> None:
     print("\n" + "=" * 50)
     print("  ROBOCHESS — Human (White) vs AI (Black)")
     print("  Enter moves in UCI format (e.g., e2e4)")
-    print("  Commands: quit, exit")
+    print("  Commands: quit, exit, hint, suggest")
     print("=" * 50 + "\n")
 
 
@@ -360,6 +411,12 @@ def print_game_over(board: chess.Board) -> None:
         print(f"  Checkmate! {winner} wins.")
     elif board.is_stalemate():
         print("  Stalemate — draw.")
+    elif board.is_insufficient_material():
+        print("  Draw — insufficient material.")
+    elif board.can_claim_fifty_moves():
+        print("  Draw — 50-move rule.")
+    elif board.can_claim_threefold_repetition():
+        print("  Draw — threefold repetition.")
     else:
         print(f"  Result: {board.result()}")
     print("=" * 50)
@@ -373,107 +430,102 @@ def print_runtime_abort(exc: Exception) -> None:
     print("=" * 50)
 
 
-def process_human_turn(systems: GameSystems, input_func: InputFunc = input) -> bool:
-    """Process one human turn. Return False when the user requests quit."""
-    print("\nWhite's turn (Human)")
-    print(systems.manager.board)
-    move_uci = input_func("Enter move: ").strip()
-
-    if move_uci.lower() in ("quit", "exit"):
-        logger.info("Player quit the game.")
-        return False
-
-    if not systems.manager.validate_move(move_uci):
-        print(f"Illegal move: {move_uci}. Try again.")
-        return True
-
-    move = chess.Move.from_uci(move_uci)
-    ops = systems.planner.generate_operations(move, systems.manager.board, systems.square_to_piece)
-    execute_human_ops(
-        systems.mj_model,
-        systems.mj_data,
-        ops,
-        systems.controller,
-        systems.square_to_piece,
-    )
-    systems.manager.push_move(move_uci)
-    return True
-
-
-def process_ai_turn(systems: GameSystems, viewer=None) -> bool:
-    """Process one AI turn and update the logical and physical board."""
-    print("\nBlack's turn (AI)")
-    move = systems.manager.get_ai_move()
-    if not move:
-        raise AIEngineError("AI returned no move.")
-
-    move_uci = move.uci()
-    print(f"AI plays: {move_uci}")
-    ops = systems.planner.generate_operations(move, systems.manager.board, systems.square_to_piece)
-    execute_ai_ops(
-        ops,
-        systems.controller,
-        systems.square_to_piece,
-        systems.mj_model,
-        systems.mj_data,
-        viewer,
-    )
-    systems.manager.push_move(move_uci)
-    return True
-
-
-def complete_turn(systems: GameSystems, viewer=None, sleep_sec: float = 0.5) -> None:
-    """Run post-turn validation and viewer synchronization."""
-    systems.check_registry.run(CheckHook.TURN_END, CheckContext(hook=CheckHook.TURN_END, systems=systems, viewer=viewer))
-    sync_viewer(viewer, systems.mj_model, systems.mj_data)
-    time.sleep(sleep_sec)
-
-
-def run_turn(
-    systems: GameSystems,
-    viewer=None,
-    input_func: InputFunc = input,
-    sleep_sec: float = 0.5,
-) -> bool:
-    """Run exactly one turn for the side to move."""
-    systems.check_registry.run(CheckHook.TURN_START, CheckContext(hook=CheckHook.TURN_START, systems=systems, viewer=viewer))
-
-    should_continue = (
-        process_human_turn(systems, input_func=input_func)
-        if systems.manager.board.turn == chess.WHITE
-        else process_ai_turn(systems, viewer=viewer)
-    )
-    if not should_continue:
-        return False
-
-    complete_turn(systems, viewer=viewer, sleep_sec=sleep_sec)
-    return True
-
+import tkinter as tk
+import threading
+import queue
+from src.game_loop import GameLoop
+from src.gui.board_panel import BoardPanel
+import traceback
 
 def main() -> None:
-    """Run the interactive RoboChess application."""
+    """Run the interactive RoboChess application with GUI."""
     systems = bootstrap_game_systems()
     log_event(logger, logging.INFO, "viewer_launch")
+    
+    game_loop = GameLoop(systems)
+    root = tk.Tk()
+    
+    move_queue = queue.Queue()
+    stop_event = threading.Event()
+    
+    def on_gui_move(uci):
+        move_queue.put(uci)
+        
+    panel = BoardPanel(root, game_loop, on_move_callback=on_gui_move)
+    panel.pack(fill=tk.BOTH, expand=True)
 
-    with mujoco.viewer.launch_passive(systems.mj_model, systems.mj_data) as viewer:
-        sync_viewer(viewer, systems.mj_model, systems.mj_data)
-        print_game_banner()
-
-        while viewer.is_running() and not systems.manager.board.is_game_over(claim_draw=True):
-            try:
-                if not run_turn(systems, viewer=viewer):
-                    break
-            except EOFError:
-                logger.info("EOF received, ending game.")
-                break
-            except (ExecutionError, AIEngineError) as exc:
-                logger.error("Operational RoboChess failure: %s", exc)
+    def game_worker():
+        try:
+            with mujoco.viewer.launch_passive(systems.mj_model, systems.mj_data) as viewer:
                 sync_viewer(viewer, systems.mj_model, systems.mj_data)
-                print_runtime_abort(exc)
-                return
-            except Exception as exc:
-                freeze_on_exception(exc, viewer=viewer, mj_model=systems.mj_model, mj_data=systems.mj_data)
-                return
+                print_game_banner()
+                
+                while not stop_event.is_set() and viewer.is_running() and not systems.manager.board.is_game_over(claim_draw=True):
+                    state = game_loop.get_state()
+                    try:
+                        if state.board.turn == chess.WHITE:
+                            # Use a timeout to allow checking stop_event
+                            try:
+                                uci = move_queue.get(timeout=1.0)
+                            except queue.Empty:
+                                continue
+                                
+                            if uci is None:
+                                # Auto play step requested
+                                if not panel.auto_play.get():
+                                    # Meaningless button click, continue
+                                    continue
+                                # Use AI for white
+                                res = game_loop.execute_ai_turn(viewer)
+                            else:
+                                res = game_loop.submit_move(uci, viewer=viewer)
+                        else: # black turn
+                            if panel.auto_play.get():
+                                # wait for user to click next turn
+                                try:
+                                    uci = move_queue.get(timeout=1.0)
+                                except queue.Empty:
+                                    continue
+                                if uci is not None:
+                                    continue # Ignore explicit moves on AI's turn
+                            res = game_loop.execute_ai_turn(viewer)
+                    except Exception as e:
+                        print(f"Loop Error: {traceback.format_exc()}")
+                        break
+                        
+                    root.after(0, panel.refresh)
+                    
+                    if res.success:
+                        root.after(0, panel.append_history, res.message)
+                    else:
+                        if res.error:
+                            print(f"Execution Error: {traceback.format_exc()}")
+                            freeze_on_exception(res.error, viewer=viewer, mj_model=systems.mj_model, mj_data=systems.mj_data)
+                            break
+                        else:
+                            print(f"Failed: {res.message}")
 
-        print_game_over(systems.manager.board)
-        time.sleep(5.0)
+                if stop_event.is_set():
+                    return
+
+                if not viewer.is_running():
+                    return
+                    
+                print_game_over(systems.manager.board)
+                root.after(0, panel.refresh)
+                
+                while not stop_event.is_set() and viewer.is_running():
+                    time.sleep(1)
+        finally:
+            systems.manager.close()
+
+    def on_close():
+        stop_event.set()
+        root.destroy()
+
+    root.protocol("WM_DELETE_WINDOW", on_close)
+
+    thread = threading.Thread(target=game_worker, daemon=True)
+    thread.start()
+    
+    root.mainloop()

@@ -213,7 +213,9 @@ class PieceObserverCheck(RuntimeCheck):
 
     def run(self, context: CheckContext) -> None:
         systems = context.systems
-        BoardObserver(systems.mj_model, systems.mj_data).verify_stability()
+        BoardObserver(systems.mj_model, systems.mj_data).verify_stability(
+            active_piece_names=set(systems.square_to_piece.values())
+        )
 
 
 class StageGoalReachabilityCheck(RuntimeCheck):

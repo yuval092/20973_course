@@ -30,11 +30,13 @@ class BoardObserver:
         """Return True when a MuJoCo body should not be treated as a chess piece."""
         return not name or any(token in name for token in IGNORED_BODY_TOKENS)
 
-    def verify_stability(self):
+    def verify_stability(self, active_piece_names=None):
         """Check every relevant piece for tilt, burial, and large displacement."""
         for i in range(self.model.nbody):
             name = mujoco.mj_id2name(self.model, mujoco.mjtObj.mjOBJ_BODY, i)
             if self._is_ignored_body(name):
+                continue
+            if active_piece_names is not None and name not in active_piece_names:
                 continue
 
             quat = self.data.body(i).xquat

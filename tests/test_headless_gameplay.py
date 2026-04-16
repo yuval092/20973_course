@@ -15,17 +15,13 @@ from src.logic.operation_planner import OperationPlanner, PickPlaceOp
 from src.runtime_guard import validate_board_state
 
 
-def _build_game():
-    ExecutionController._white_graveyard_count = 0
-    ExecutionController._black_graveyard_count = 0
-
+def _build_game(manager):
     model = mujoco.MjModel.from_xml_path(SCENE_XML)
     data = mujoco.MjData(model)
     mujoco.mj_forward(model, data)
 
     env = ChessPickPlaceEnv(model, data, n_substeps=N_SUBSTEPS)
     controller = ExecutionController(None, env)
-    manager = ChessGameManager()
     planner = OperationPlanner()
     square_to_piece = initialize_square_to_piece(model, data)
 
@@ -109,8 +105,8 @@ def _set_piece_tilt(game, piece_name, quat):
     mujoco.mj_forward(game["model"], game["data"])
 
 
-def test_headless_initial_board_is_valid_and_arm_is_home():
-    game = _build_game()
+def test_headless_initial_board_is_valid_and_arm_is_home(manager):
+    game = _build_game(manager)
     assert len(game["square_to_piece"]) == 32
     validate_board_state(
         game["model"],
@@ -122,8 +118,8 @@ def test_headless_initial_board_is_valid_and_arm_is_home():
     _assert_arm_home(game)
 
 
-def test_headless_human_e2e4_updates_board_scene_and_mapping():
-    game = _build_game()
+def test_headless_human_e2e4_updates_board_scene_and_mapping(manager):
+    game = _build_game(manager)
     _play_turn(game, "e2e4")
 
     assert "e2" not in game["square_to_piece"]
@@ -131,8 +127,8 @@ def test_headless_human_e2e4_updates_board_scene_and_mapping():
     _assert_arm_home(game)
 
 
-def test_headless_ai_g8f6_logs_success_and_workspace_warning(caplog):
-    game = _build_game()
+def test_headless_ai_g8f6_logs_success_and_workspace_warning(manager, caplog):
+    game = _build_game(manager)
     _play_turn(game, "e2e4")
 
     with caplog.at_level("INFO"):
@@ -144,8 +140,8 @@ def test_headless_ai_g8f6_logs_success_and_workspace_warning(caplog):
     _assert_arm_home(game)
 
 
-def test_headless_multi_turn_opening_sequence_one_stays_valid_each_turn():
-    game = _build_game()
+def test_headless_multi_turn_opening_sequence_one_stays_valid_each_turn(manager):
+    game = _build_game(manager)
 
     for uci, physical_black in [
         ("e2e4", False),
@@ -169,8 +165,8 @@ def test_headless_multi_turn_opening_sequence_one_stays_valid_each_turn():
     _assert_piece_on_square(game, "d6", "b_pawn_4")
 
 
-def test_headless_multi_turn_opening_sequence_two_stays_valid_each_turn():
-    game = _build_game()
+def test_headless_multi_turn_opening_sequence_two_stays_valid_each_turn(manager):
+    game = _build_game(manager)
 
     for uci, physical_black in [
         ("c2c4", False),
@@ -194,8 +190,8 @@ def test_headless_multi_turn_opening_sequence_two_stays_valid_each_turn():
     _assert_piece_on_square(game, "d6", "b_pawn_4")
 
 
-def test_headless_human_capture_sends_captured_piece_to_black_graveyard():
-    game = _build_game()
+def test_headless_human_capture_sends_captured_piece_to_black_graveyard(manager):
+    game = _build_game(manager)
 
     _play_turn(game, "e2e4")
     _play_turn(game, "d7d5")
@@ -203,12 +199,16 @@ def test_headless_human_capture_sends_captured_piece_to_black_graveyard():
 
     _assert_piece_on_square(game, "d5", "w_pawn_5")
     captured_pos = game["data"].body("b_pawn_4").xpos.copy()
-    np.testing.assert_allclose(captured_pos, BLACK_GRAVEYARD_ORIGIN, atol=0.002)
+    
+    from src.game_runtime import _get_graveyard_grid_pos
+    # b_pawn_4 is the first black piece captured in this test
+    expected_pos = _get_graveyard_grid_pos(BLACK_GRAVEYARD_ORIGIN, 0)
+    np.testing.assert_allclose(captured_pos, expected_pos, atol=0.01)
     assert "d7" not in game["square_to_piece"]
 
 
-def test_headless_human_castling_moves_king_and_rook_to_expected_squares():
-    game = _build_game()
+def test_headless_human_castling_moves_king_and_rook_to_expected_squares(manager):
+    game = _build_game(manager)
 
     for uci in ["e2e4", "e7e5", "g1f3", "b8c6", "f1e2", "g8f6", "e1g1"]:
         _play_turn(game, uci)
@@ -220,8 +220,8 @@ def test_headless_human_castling_moves_king_and_rook_to_expected_squares():
     _assert_arm_home(game)
 
 
-def test_headless_two_white_pawn_pushes_keep_board_consistent():
-    game = _build_game()
+def test_headless_two_white_pawn_pushes_keep_board_consistent(manager):
+    game = _build_game(manager)
 
     for uci in ["e2e4", "e7e5", "d2d4", "d7d6"]:
         _play_turn(game, uci)
@@ -239,8 +239,8 @@ def test_headless_two_white_pawn_pushes_keep_board_consistent():
     _assert_piece_on_square(game, "d6", "b_pawn_4")
 
 
-def test_headless_direct_physical_knight_sequence_keeps_positions_valid():
-    game = _build_game()
+def test_headless_direct_physical_knight_sequence_keeps_positions_valid(manager):
+    game = _build_game(manager)
     controller = game["controller"]
 
     first = controller.execute_op(PickPlaceOp("g8", "f6", "b_knight_2"), viewer=None)
@@ -259,8 +259,8 @@ def test_headless_direct_physical_knight_sequence_keeps_positions_valid():
     assert z_error < 0.02
 
 
-def test_headless_graveyard_targets_are_reachable_and_raised():
-    game = _build_game()
+def test_headless_graveyard_targets_are_reachable_and_raised(manager):
+    game = _build_game(manager)
     white_target = game["controller"].get_pos("white_graveyard")
     black_target = game["controller"].get_pos("black_graveyard")
 
@@ -326,8 +326,8 @@ def test_generated_xml_board_underlay_sits_below_playable_squares():
     assert float(underlay_match.group(1)) < float(square_match.group(1))
 
 
-def test_headless_graveyard_trays_are_separated_from_board_edge():
-    game = _build_game()
+def test_headless_graveyard_trays_are_separated_from_board_edge(manager):
+    game = _build_game(manager)
     table_geom = game["model"].geom("table")
     table_min_y = float(table_geom.pos[1] - table_geom.size[1])
     board_min_y = float(game["controller"].get_square_pos("a8")[1] - 0.5 * SQUARE_SIZE)
@@ -344,8 +344,8 @@ def test_headless_graveyard_trays_are_separated_from_board_edge():
     assert table_min_y <= black_max_y < board_min_y
 
 
-def test_headless_nudged_piece_raises_board_state_error():
-    game = _build_game()
+def test_headless_nudged_piece_raises_board_state_error(manager):
+    game = _build_game(manager)
     _play_turn(game, "e2e4")
 
     body = game["data"].body("w_pawn_5")
@@ -357,8 +357,8 @@ def test_headless_nudged_piece_raises_board_state_error():
         validate_board_state(game["model"], game["data"], game["manager"].board, game["square_to_piece"], game["controller"])
 
 
-def test_headless_tilted_piece_raises_stability_error():
-    game = _build_game()
+def test_headless_tilted_piece_raises_stability_error(manager):
+    game = _build_game(manager)
     _play_turn(game, "e2e4")
 
     _set_piece_tilt(game, "w_pawn_5", np.array([0.923, 0.382, 0.0, 0.0]))
@@ -367,8 +367,8 @@ def test_headless_tilted_piece_raises_stability_error():
         validate_board_state(game["model"], game["data"], game["manager"].board, game["square_to_piece"], game["controller"])
 
 
-def test_headless_invalid_piece_teleport_raises_piece_lookup_error():
-    game = _build_game()
+def test_headless_invalid_piece_teleport_raises_piece_lookup_error(manager):
+    game = _build_game(manager)
 
     with pytest.raises(PieceLookupError, match="not found"):
         teleport_piece(
@@ -379,8 +379,8 @@ def test_headless_invalid_piece_teleport_raises_piece_lookup_error():
         )
 
 
-def test_headless_corrupted_square_mapping_raises_board_state_error():
-    game = _build_game()
+def test_headless_corrupted_square_mapping_raises_board_state_error(manager):
+    game = _build_game(manager)
     _play_turn(game, "e2e4")
     game["square_to_piece"]["e4"] = "w_pawn_4"
 
@@ -394,8 +394,8 @@ def test_headless_corrupted_square_mapping_raises_board_state_error():
         )
 
 
-def test_headless_execute_ai_ops_raises_on_unsuccessful_controller_result(monkeypatch):
-    game = _build_game()
+def test_headless_execute_ai_ops_raises_on_unsuccessful_controller_result(manager, monkeypatch):
+    game = _build_game(manager)
     ops = [PickPlaceOp("g8", "f6", "b_knight_2")]
 
     def fake_execute_op(op, viewer=None):
@@ -412,3 +412,37 @@ def test_headless_execute_ai_ops_raises_on_unsuccessful_controller_result(monkey
             game["data"],
             viewer=None,
         )
+
+def test_headless_human_promotion_swaps_piece(manager):
+    game = _build_game(manager)
+    board = game["manager"].board
+    
+    board.set_fen("8/P7/8/8/8/8/8/k6K w - - 0 1")
+    game["square_to_piece"].clear()
+    game["square_to_piece"]["a7"] = "w_pawn_1"
+    game["square_to_piece"]["a1"] = "b_king"
+    game["square_to_piece"]["h1"] = "w_king"
+    
+    gy_pos = [1.5, 0.5, 0.4]
+    for body_id in range(game["model"].nbody):
+        name = mujoco.mj_id2name(game["model"], mujoco.mjtObj.mjOBJ_BODY, body_id)
+        if name and name.startswith(("w_", "b_")) and name not in {"w_pawn_1", "b_king", "w_king", "w_spare_queen_1"}:
+            teleport_piece(game["model"], game["data"], name, gy_pos)
+            
+    teleport_piece(game["model"], game["data"], "w_pawn_1", game["controller"].get_square_pos("a7"))
+    teleport_piece(game["model"], game["data"], "b_king", game["controller"].get_square_pos("a1"))
+    teleport_piece(game["model"], game["data"], "w_king", game["controller"].get_square_pos("h1"))
+    
+    mujoco.mj_forward(game["model"], game["data"])
+    
+    _play_turn(game, "a7a8q")
+    
+    assert "a7" not in game["square_to_piece"]
+    assert game["square_to_piece"]["a8"] == "w_spare_queen_1"
+
+def test_headless_teleport_piece_success_path(manager):
+    game = _build_game(manager)
+    teleport_piece(game["model"], game["data"], "w_pawn_1", [1.0, 1.0, 1.5])
+    mujoco.mj_forward(game["model"], game["data"])
+    pos = game["data"].body("w_pawn_1").xpos
+    np.testing.assert_allclose(pos, [1.0, 1.0, 1.5], atol=0.01)

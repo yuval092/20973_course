@@ -126,3 +126,28 @@ def test_castling_move_ops():
     assert ops[1].target_square == "h1"
     assert ops[1].dest_square == "f1"
     assert ops[1].piece_name == "piece_h1"
+
+def test_queenside_castling_move_ops():
+    planner = OperationPlanner()
+    board = chess.Board("r3k2r/pppppppp/8/8/8/8/PPPPPPPP/R3K2R w KQkq - 0 1")
+    move = chess.Move.from_uci("e1c1")
+    mapping = get_dummy_mapping()
+    assert board.is_castling(move)
+    
+    ops = planner.generate_operations(move, board, mapping)
+    assert len(ops) == 2
+    assert ops[0].target_square == "e1"
+    assert ops[0].dest_square == "c1"
+    assert ops[1].target_square == "a1"
+    assert ops[1].dest_square == "d1"
+
+def test_pawn_under_promotion_to_knight():
+    planner = OperationPlanner()
+    board = chess.Board("8/P7/8/8/8/8/8/k6K w - - 0 1")
+    move = chess.Move.from_uci("a7a8n")
+    mapping = get_dummy_mapping()
+    assert move.promotion == chess.KNIGHT
+    
+    ops = planner.generate_operations(move, board, mapping)
+    assert len(ops) == 1
+    assert ops[0].promotion == chess.KNIGHT

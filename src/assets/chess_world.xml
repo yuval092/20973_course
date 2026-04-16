@@ -377,42 +377,82 @@
             <geom type="cylinder" size="0.014 0.012" rgba="1 0 0 0" contype="1" conaffinity="1" condim="3" mass="0.08" solimp="0.95 0.99 0.001" solref="0.01 1" friction="1.2 0.02 0.002"/>
             <site name="b_rook_2_site" pos="0 0 0" size="0.02 0.02 0.02" rgba="0 0 0 0"/>
         </body>
-        <body name="w_spare_queen" pos="1.030 1.050 -0.0500">
+        <body name="w_spare_queen_1" pos="1.030 1.050 -0.0500">
             <joint type="free" damping="5.0"/>
             <geom type="mesh" mesh="chess_queen_mesh" material="white_piece" rgba="0 0 0 0" pos="0 0 0.0060" mass="0" contype="0" conaffinity="0" friction="1.2 0.02 0.002"/>
             <geom type="cylinder" size="0.014 0.012" rgba="0 0 0 0" contype="0" conaffinity="0" condim="3" mass="0.08" solimp="0.95 0.99 0.001" solref="0.01 1" friction="1.2 0.02 0.002"/>
         </body>
-        <body name="b_spare_queen" pos="1.030 0.450 -0.0500">
+        <body name="b_spare_queen_1" pos="1.030 0.450 -0.0500">
             <joint type="free" damping="5.0"/>
             <geom type="mesh" mesh="chess_queen_mesh" material="black_piece" rgba="0 0 0 0" pos="0 0 0.0060" mass="0" contype="0" conaffinity="0" friction="1.2 0.02 0.002"/>
             <geom type="cylinder" size="0.014 0.012" rgba="0 0 0 0" contype="0" conaffinity="0" condim="3" mass="0.08" solimp="0.95 0.99 0.001" solref="0.01 1" friction="1.2 0.02 0.002"/>
         </body>
-        <body name="w_spare_rook" pos="1.130 1.050 -0.0500">
+        <body name="w_spare_rook_1" pos="1.130 1.050 -0.0500">
             <joint type="free" damping="5.0"/>
             <geom type="mesh" mesh="chess_rook_mesh" material="white_piece" rgba="0 0 0 0" pos="0 0 0.0050" mass="0" contype="0" conaffinity="0" friction="1.2 0.02 0.002"/>
             <geom type="cylinder" size="0.014 0.012" rgba="0 0 0 0" contype="0" conaffinity="0" condim="3" mass="0.08" solimp="0.95 0.99 0.001" solref="0.01 1" friction="1.2 0.02 0.002"/>
         </body>
-        <body name="b_spare_rook" pos="1.130 0.450 -0.0500">
+        <body name="b_spare_rook_1" pos="1.130 0.450 -0.0500">
             <joint type="free" damping="5.0"/>
             <geom type="mesh" mesh="chess_rook_mesh" material="black_piece" rgba="0 0 0 0" pos="0 0 0.0050" mass="0" contype="0" conaffinity="0" friction="1.2 0.02 0.002"/>
             <geom type="cylinder" size="0.014 0.012" rgba="0 0 0 0" contype="0" conaffinity="0" condim="3" mass="0.08" solimp="0.95 0.99 0.001" solref="0.01 1" friction="1.2 0.02 0.002"/>
         </body>
-        <body name="w_spare_bishop" pos="1.230 1.050 -0.0500">
+        <body name="w_spare_bishop_1" pos="1.230 1.050 -0.0500">
             <joint type="free" damping="5.0"/>
             <geom type="mesh" mesh="chess_bishop_mesh" material="white_piece" rgba="0 0 0 0" pos="0 0 0.0050" mass="0" contype="0" conaffinity="0" friction="1.2 0.02 0.002"/>
             <geom type="cylinder" size="0.014 0.012" rgba="0 0 0 0" contype="0" conaffinity="0" condim="3" mass="0.08" solimp="0.95 0.99 0.001" solref="0.01 1" friction="1.2 0.02 0.002"/>
         </body>
-        <body name="b_spare_bishop" pos="1.230 0.450 -0.0500">
+        <body name="b_spare_bishop_1" pos="1.230 0.450 -0.0500">
             <joint type="free" damping="5.0"/>
             <geom type="mesh" mesh="chess_bishop_mesh" material="black_piece" rgba="0 0 0 0" pos="0 0 0.0050" mass="0" contype="0" conaffinity="0" friction="1.2 0.02 0.002"/>
             <geom type="cylinder" size="0.014 0.012" rgba="0 0 0 0" contype="0" conaffinity="0" condim="3" mass="0.08" solimp="0.95 0.99 0.001" solref="0.01 1" friction="1.2 0.02 0.002"/>
         </body>
-        <body name="w_spare_knight" pos="1.330 1.050 -0.0500">
+        <body name="w_spare_knight_1" pos="1.330 1.050 -0.0500">
             <joint type="free" damping="5.0"/>
             <geom type="mesh" mesh="chess_knight_mesh" material="white_piece" rgba="0 0 0 0" pos="0 0 0.0050" mass="0" contype="0" conaffinity="0" friction="1.2 0.02 0.002"/>
             <geom type="cylinder" size="0.014 0.012" rgba="0 0 0 0" contype="0" conaffinity="0" condim="3" mass="0.08" solimp="0.95 0.99 0.001" solref="0.01 1" friction="1.2 0.02 0.002"/>
         </body>
-        <body name="b_spare_knight" pos="1.330 0.450 -0.0500">
+        <body name="b_spare_knight_1" pos="1.330 0.450 -0.0500">
+            <joint type="free" damping="5.0"/>
+            <geom type="mesh" mesh="chess_knight_mesh" material="black_piece" rgba="0 0 0 0" pos="0 0 0.0050" mass="0" contype="0" conaffinity="0" friction="1.2 0.02 0.002"/>
+            <geom type="cylinder" size="0.014 0.012" rgba="0 0 0 0" contype="0" conaffinity="0" condim="3" mass="0.08" solimp="0.95 0.99 0.001" solref="0.01 1" friction="1.2 0.02 0.002"/>
+        </body>
+        <body name="w_spare_queen_2" pos="1.430 1.050 -0.0500">
+            <joint type="free" damping="5.0"/>
+            <geom type="mesh" mesh="chess_queen_mesh" material="white_piece" rgba="0 0 0 0" pos="0 0 0.0060" mass="0" contype="0" conaffinity="0" friction="1.2 0.02 0.002"/>
+            <geom type="cylinder" size="0.014 0.012" rgba="0 0 0 0" contype="0" conaffinity="0" condim="3" mass="0.08" solimp="0.95 0.99 0.001" solref="0.01 1" friction="1.2 0.02 0.002"/>
+        </body>
+        <body name="b_spare_queen_2" pos="1.430 0.450 -0.0500">
+            <joint type="free" damping="5.0"/>
+            <geom type="mesh" mesh="chess_queen_mesh" material="black_piece" rgba="0 0 0 0" pos="0 0 0.0060" mass="0" contype="0" conaffinity="0" friction="1.2 0.02 0.002"/>
+            <geom type="cylinder" size="0.014 0.012" rgba="0 0 0 0" contype="0" conaffinity="0" condim="3" mass="0.08" solimp="0.95 0.99 0.001" solref="0.01 1" friction="1.2 0.02 0.002"/>
+        </body>
+        <body name="w_spare_rook_2" pos="1.530 1.050 -0.0500">
+            <joint type="free" damping="5.0"/>
+            <geom type="mesh" mesh="chess_rook_mesh" material="white_piece" rgba="0 0 0 0" pos="0 0 0.0050" mass="0" contype="0" conaffinity="0" friction="1.2 0.02 0.002"/>
+            <geom type="cylinder" size="0.014 0.012" rgba="0 0 0 0" contype="0" conaffinity="0" condim="3" mass="0.08" solimp="0.95 0.99 0.001" solref="0.01 1" friction="1.2 0.02 0.002"/>
+        </body>
+        <body name="b_spare_rook_2" pos="1.530 0.450 -0.0500">
+            <joint type="free" damping="5.0"/>
+            <geom type="mesh" mesh="chess_rook_mesh" material="black_piece" rgba="0 0 0 0" pos="0 0 0.0050" mass="0" contype="0" conaffinity="0" friction="1.2 0.02 0.002"/>
+            <geom type="cylinder" size="0.014 0.012" rgba="0 0 0 0" contype="0" conaffinity="0" condim="3" mass="0.08" solimp="0.95 0.99 0.001" solref="0.01 1" friction="1.2 0.02 0.002"/>
+        </body>
+        <body name="w_spare_bishop_2" pos="1.630 1.050 -0.0500">
+            <joint type="free" damping="5.0"/>
+            <geom type="mesh" mesh="chess_bishop_mesh" material="white_piece" rgba="0 0 0 0" pos="0 0 0.0050" mass="0" contype="0" conaffinity="0" friction="1.2 0.02 0.002"/>
+            <geom type="cylinder" size="0.014 0.012" rgba="0 0 0 0" contype="0" conaffinity="0" condim="3" mass="0.08" solimp="0.95 0.99 0.001" solref="0.01 1" friction="1.2 0.02 0.002"/>
+        </body>
+        <body name="b_spare_bishop_2" pos="1.630 0.450 -0.0500">
+            <joint type="free" damping="5.0"/>
+            <geom type="mesh" mesh="chess_bishop_mesh" material="black_piece" rgba="0 0 0 0" pos="0 0 0.0050" mass="0" contype="0" conaffinity="0" friction="1.2 0.02 0.002"/>
+            <geom type="cylinder" size="0.014 0.012" rgba="0 0 0 0" contype="0" conaffinity="0" condim="3" mass="0.08" solimp="0.95 0.99 0.001" solref="0.01 1" friction="1.2 0.02 0.002"/>
+        </body>
+        <body name="w_spare_knight_2" pos="1.730 1.050 -0.0500">
+            <joint type="free" damping="5.0"/>
+            <geom type="mesh" mesh="chess_knight_mesh" material="white_piece" rgba="0 0 0 0" pos="0 0 0.0050" mass="0" contype="0" conaffinity="0" friction="1.2 0.02 0.002"/>
+            <geom type="cylinder" size="0.014 0.012" rgba="0 0 0 0" contype="0" conaffinity="0" condim="3" mass="0.08" solimp="0.95 0.99 0.001" solref="0.01 1" friction="1.2 0.02 0.002"/>
+        </body>
+        <body name="b_spare_knight_2" pos="1.730 0.450 -0.0500">
             <joint type="free" damping="5.0"/>
             <geom type="mesh" mesh="chess_knight_mesh" material="black_piece" rgba="0 0 0 0" pos="0 0 0.0050" mass="0" contype="0" conaffinity="0" friction="1.2 0.02 0.002"/>
             <geom type="cylinder" size="0.014 0.012" rgba="0 0 0 0" contype="0" conaffinity="0" condim="3" mass="0.08" solimp="0.95 0.99 0.001" solref="0.01 1" friction="1.2 0.02 0.002"/>
