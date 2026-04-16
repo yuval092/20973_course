@@ -78,13 +78,13 @@ def test_validate_board_state_raises_for_mapping_mismatch():
 
 def test_run_freeze_loop_syncs_until_viewer_stops():
     viewer = MagicMock()
-    viewer.is_running.side_effect = [True, True, False]
+    viewer.is_running.side_effect = [True, True, True, False]
     mj_model = MagicMock()
     mj_data = MagicMock()
 
     with patch("src.runtime_guard.time.sleep"):
         with patch("src.runtime_guard.mujoco.mj_forward") as mj_forward:
-            run_freeze_loop(viewer=viewer, mj_model=mj_model, mj_data=mj_data, max_cycles=10)
+            run_freeze_loop(viewer=viewer, mj_model=mj_model, mj_data=mj_data, max_cycles=2)
 
     assert viewer.sync.call_count == 2
     assert mj_forward.call_count == 2
@@ -106,4 +106,3 @@ def test_validate_board_state_real_scene_initial_board_passes():
     
     # Should not raise an exception
     validate_board_state(model, data, board, square_to_piece, controller)
-

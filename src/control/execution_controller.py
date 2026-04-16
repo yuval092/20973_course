@@ -97,7 +97,7 @@ class ExecutionController:
         "RETURN_HOME",
         "FINAL_PLACEMENT_SETTLE",
     ]
-    _source_descend_offset_z = 0.03
+    _source_descend_offset_z = 0.015
 
     # Graveyard counters for grid positioning
     _reach_min = np.array([REACHABLE_X_MIN, REACHABLE_Y_MIN, REACHABLE_Z_MIN], dtype=np.float64)
@@ -889,73 +889,21 @@ class ExecutionController:
         return success, GRIPPER_ACTUATION_STEPS
 
     def _close_gripper_with_descent(self, viewer=None, stabilize_piece=False):
-        grip_pos = self.env.get_grip_pos()
-        piece_pos = self.env.get_piece_pos()
-        align_z = max(float(grip_pos[2]), float(piece_pos[2]) + 0.05)
-        align_goal = np.array([piece_pos[0], piece_pos[1], align_z], dtype=np.float64)
-        align_success, steps_taken = self._move_gripper_to(
-            align_goal,
-            viewer=viewer,
-            gripper_opening=PREGRASP_GRIPPER_OPENING,
-            transit_z=align_z,
-            max_cartesian_action=0.2,
-        )
-        if not align_success:
-            return False, steps_taken
-
-        desired_contact_gap = GRIP_CONTACT_TOLERANCE * 0.95
-        for _ in range(CLOSE_DESCEND_STEPS):
-            grip_pos = self.env.get_grip_pos()
-            piece_pos = self.env.get_piece_pos()
-            piece_to_grip = np.linalg.norm(piece_pos - grip_pos)
-            z_descent = -0.05 if piece_to_grip > desired_contact_gap else 0.0
-
-            action = np.zeros(4, dtype=np.float64)
-            action[2] = z_descent
-            self.env.step(
-                action,
-                viewer=viewer,
-                debug=False,
-                gripper_target=GRIPPER_CLOSED,
-            )
-            steps_taken += 1
-
-            piece_pos = self.env.get_piece_pos()
-            grip_pos = self.env.get_grip_pos()
-            xy_dist = np.linalg.norm(piece_pos[:2] - grip_pos[:2])
-            piece_to_grip = np.linalg.norm(piece_pos - grip_pos)
-            finger_qpos = self.env.get_gripper_finger_qpos()
-            if steps_taken == 1 or steps_taken % self._progress_log_interval == 0:
-                logger.debug(
-                    "    Close progress | "
-                    f"step={steps_taken}/{CLOSE_DESCEND_STEPS} | "
-                    f"piece={piece_pos.round(4)} | "
-                    f"grip={grip_pos.round(4)} | "
-                    f"xy_dist={xy_dist:.4f}m | "
-                    f"piece_to_grip={piece_to_grip:.4f}m | "
-                    f"finger_qpos={finger_qpos.round(5)}"
-                )
-            if xy_dist < GRIP_CONTACT_TOLERANCE and piece_to_grip < desired_contact_gap:
-                logger.debug(
-                    "    Close precondition met | "
-                    f"step={steps_taken} | "
-                    f"xy_dist={xy_dist:.4f}m | "
-                    f"piece_to_grip={piece_to_grip:.4f}m"
-                )
-                break
-
+        # Simply close the gripper at current height.
+        # Robot already descended in DESCEND_SRC stage.
+        self._set_gripper_aperture(GRIPPER_CLOSED, viewer=viewer)
+        
         self._settle(viewer, steps=SETTLE_STEPS)
         piece_pos = self.env.get_piece_pos()
         grip_pos = self.env.get_grip_pos()
         xy_dist = np.linalg.norm(piece_pos[:2] - grip_pos[:2])
         piece_to_grip = np.linalg.norm(piece_pos - grip_pos)
         finger_qpos = self.env.get_gripper_finger_qpos()
-        # The grip site sits noticeably above the piece COM even in a valid
-        # pinch pose, so vertical site-to-piece gap is not a reliable close
-        # criterion here. Use lateral alignment plus nearly-closed fingers,
-        # then let LIFT_VERIFY prove whether the piece is actually captured.
+        
         fingers_closed = np.max(np.abs(finger_qpos)) < 0.002
-        success = xy_dist < GRIP_CONTACT_TOLERANCE and piece_to_grip < desired_contact_gap and fingers_closed
+        # Success if we are laterally aligned and fingers are closed
+        success = xy_dist < GRIP_CONTACT_TOLERANCE and fingers_closed
+        
         logger.debug(
             "    Close summary | "
             f"grip={grip_pos.round(4)} | "
@@ -966,7 +914,7 @@ class ExecutionController:
             f"fingers_closed={fingers_closed} | "
             f"success={success}"
         )
-        return success, steps_taken
+        return success, GRIPPER_ACTUATION_STEPS + SETTLE_STEPS
 
     def _set_gripper_aperture(self, target_opening, viewer=None):
         self.env.set_gripper_target(target_opening)

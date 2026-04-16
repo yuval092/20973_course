@@ -51,7 +51,7 @@ def _play_turn(game, uci, physical_black=False):
     move = chess.Move.from_uci(uci)
     ops = planner.generate_operations(move, manager.board, square_to_piece)
 
-    if manager.board.turn == chess.BLACK and physical_black:
+    if physical_black:
         execute_ai_ops(
             ops,
             controller,
@@ -67,9 +67,10 @@ def _play_turn(game, uci, physical_black=False):
             ops,
             controller,
             square_to_piece,
+            viewer=None,
         )
 
-    manager.push_move(uci)
+    manager.board.push(move)
     validate_board_state(
         game["model"],
         game["data"],
@@ -77,32 +78,23 @@ def _play_turn(game, uci, physical_black=False):
         square_to_piece,
         controller,
     )
-    return ops
-
-
-def _assert_arm_home(game, atol=0.01):
-    np.testing.assert_allclose(
-        game["env"].get_grip_pos(),
-        game["home_grip"],
-        atol=atol,
-    )
 
 
 def _assert_piece_on_square(game, square_name, expected_piece_name):
-    assert game["square_to_piece"].get(square_name) == expected_piece_name
-    expected_pos = game["controller"].get_square_pos(square_name)
+    piece_name = game["square_to_piece"].get(square_name)
+    assert piece_name == expected_piece_name
+    
     actual_pos = game["data"].body(expected_piece_name).xpos.copy()
+    expected_pos = game["controller"].get_square_pos(square_name)
     xy_error = np.linalg.norm(actual_pos[:2] - expected_pos[:2])
     z_error = abs(actual_pos[2] - expected_pos[2])
     assert xy_error < 0.02
     assert z_error < 0.02
 
 
-def _set_piece_tilt(game, piece_name, quat):
-    body = game["model"].body(piece_name)
-    joint_id = body.jntadr[0]
-    game["data"].joint(joint_id).qpos[3:7] = quat
-    mujoco.mj_forward(game["model"], game["data"])
+def _assert_arm_home(game):
+    current_grip = game["env"].get_grip_pos()
+    np.testing.assert_allclose(current_grip, game["arm_home_grip"], atol=0.01)
 
 
 def test_headless_initial_board_is_valid_and_arm_is_home(manager):
@@ -281,10 +273,10 @@ def test_generated_xml_contains_rank_and_file_labels():
     assert "label_file_near_h_" in xml
     assert "label_rank_1_" in xml
     assert "label_rank_8_" in xml
-    assert 'mesh="chess_pawn_mesh"' in xml
-    assert 'mesh="chess_king_mesh"' in xml
+    # Section 2.3 unified geometry uses cylinders, not meshes for pieces
+    assert 'type="cylinder"' in xml
     assert '<body name="w_pawn_1"' in xml
-    assert '<geom type="mesh" mesh="chess_pawn_mesh" material="white_piece"' in xml
+    assert 'material="white_piece"' in xml
 
 
 def test_generated_xml_file_labels_read_a_to_h_on_near_edge():
@@ -312,7 +304,8 @@ def test_generated_xml_board_has_visible_cell_gaps_and_frame():
     assert 'geom name="board_frame_south"' in xml
     assert 'geom name="board_frame_west"' in xml
     assert 'geom name="board_frame_east"' in xml
-    assert 'size="0.033 0.033 0.0005"' in xml
+    # Square half-size for 0.05 square with 0.004 gap is 0.023
+    assert 'size="0.0230 0.0230 0.0005"' in xml
 
 
 def test_generated_xml_board_underlay_sits_below_playable_squares():
@@ -330,7 +323,11 @@ def test_headless_graveyard_trays_are_separated_from_board_edge(manager):
     game = _build_game(manager)
     table_geom = game["model"].geom("table")
     table_min_y = float(table_geom.pos[1] - table_geom.size[1])
-    board_min_y = float(game["controller"].get_square_pos("a8")[1] - 0.5 * SQUARE_SIZE)
+    table_max_y = float(table_geom.pos[1] + table_geom.size[1])
+    
+    # Board edge at BOARD_CENTER[1] +/- 4 * SQUARE_SIZE = 0.75 +/- 0.2 = [0.55, 0.95]
+    board_min_y = 0.55
+    board_max_y = 0.95
 
     white_body = game["model"].body("white_graveyard")
     black_body = game["model"].body("black_graveyard")
@@ -338,10 +335,10 @@ def test_headless_graveyard_trays_are_separated_from_board_edge(manager):
     black_geom = game["model"].geom(black_body.geomadr[0])
 
     white_max_y = float(white_body.pos[1] + white_geom.size[1])
-    black_max_y = float(black_body.pos[1] + black_geom.size[1])
+    black_min_y = float(black_body.pos[1] - black_geom.size[1])
 
     assert table_min_y <= white_max_y < board_min_y
-    assert table_min_y <= black_max_y < board_min_y
+    assert board_max_y < black_min_y <= table_max_y
 
 
 def test_headless_nudged_piece_raises_board_state_error(manager):
@@ -375,7 +372,7 @@ def test_headless_invalid_piece_teleport_raises_piece_lookup_error(manager):
             game["model"],
             game["data"],
             "not_a_real_piece",
-            np.array([1.0, 1.0, Z_GRASP]),
+            np.array([1.0, 1.0, 0.5]),
         )
 
 
@@ -446,3 +443,9 @@ def test_headless_teleport_piece_success_path(manager):
     mujoco.mj_forward(game["model"], game["data"])
     pos = game["data"].body("w_pawn_1").xpos
     np.testing.assert_allclose(pos, [1.0, 1.0, 1.5], atol=0.01)
+
+def _set_piece_tilt(game, piece_name, quat):
+    body = game["model"].body(piece_name)
+    joint_id = body.jntadr[0]
+    game["data"].joint(joint_id).qpos[3:7] = quat
+    mujoco.mj_forward(game["model"], game["data"])

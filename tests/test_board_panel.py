@@ -15,4 +15,7 @@ def test_board_panel_initialization():
     assert panel.auto_play.get() is False
     assert len(panel.squares) == 64
     
+    # Explicit cleanup to prevent Variable.__del__ RuntimeError in pytest
+    panel.destroy()
+    root.update()
     root.destroy()

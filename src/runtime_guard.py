@@ -1,72 +1,64 @@
-"""Runtime validation and freeze-on-failure helpers."""
+"""Runtime safety guards and physical-logical state validation."""
 
 from __future__ import annotations
 
 import logging
 import time
-from typing import Optional
 
 import chess
 import mujoco
 import numpy as np
 
-from src.config import PLACEMENT_TOLERANCE, TILT_THRESHOLD_COS
-from src.exceptions import BoardStateError, PieceLookupError, StabilityError
+from src.config import (
+    PLACEMENT_TOLERANCE,
+    TILT_THRESHOLD_COS,
+)
+from src.exceptions import BoardStateError, StabilityError
 from src.observation.board_observer import BoardObserver
+
 
 logger = logging.getLogger(__name__)
 
 
 def expected_board_squares(board: chess.Board) -> dict[str, chess.Piece]:
-    """Return the expected square occupancy from the logical chess board."""
+    """Return a map of square names to logical piece objects for current state."""
     return {
-        chess.square_name(square): piece
-        for square, piece in board.piece_map().items()
+        chess.square_name(sq): board.piece_at(sq)
+        for sq in chess.SQUARES
+        if board.piece_at(sq) is not None
     }
 
 
-def _piece_type_token(piece: chess.Piece) -> str:
-    """Map a python-chess piece to the naming token used in MuJoCo bodies."""
-    return {
-        chess.PAWN: "pawn",
-        chess.KNIGHT: "knight",
-        chess.BISHOP: "bishop",
-        chess.ROOK: "rook",
-        chess.QUEEN: "queen",
-        chess.KING: "king",
-    }[piece.piece_type]
-
-
-def _body_by_name(mj_data: mujoco.MjData, piece_name: str):
-    """Resolve a MuJoCo body by name with a domain-specific exception."""
+def _body_by_name(data: mujoco.MjData, name: str):
+    """Return the MuJoCo body object or raise clearly."""
     try:
-        return mj_data.body(piece_name)
+        return data.body(name)
     except KeyError as exc:
-        raise PieceLookupError(f"MuJoCo body not found for piece '{piece_name}'.") from exc
+        raise BoardStateError(f"Piece body '{name}' not found in scene.") from exc
 
 
 def _up_z_from_quat(quat: np.ndarray) -> float:
-    """Compute the world-space Z component of a body's local up vector."""
-    return float(1.0 - 2.0 * (quat[1] ** 2 + quat[2] ** 2))
+    """Compute the Z-component of the body's UP vector from its quaternion."""
+    # quat is [w, x, y, z]
+    # The UP vector in body frame is [0, 0, 1]
+    # Rotated UP vector z component is 1 - 2*x^2 - 2*y^2
+    return float(1.0 - 2.0 * (quat[1]**2 + quat[2]**2))
 
 
-def validate_piece_identity(square_name: str, piece_name: str, piece: chess.Piece) -> None:
-    """Verify that the mapped MuJoCo body matches the logical chess piece."""
-    color_prefix = "w_" if piece.color == chess.WHITE else "b_"
-    if not piece_name.startswith(color_prefix):
-        raise BoardStateError(
-            f"Square {square_name} expects color prefix {color_prefix!r}, got piece '{piece_name}'."
-        )
+def validate_piece_identity(square_name: str, piece_name: str, expected_piece: chess.Piece) -> None:
+    """Assert that a physical body name matches the expected chess piece type/color."""
+    color_prefix = "w_" if expected_piece.color == chess.WHITE else "b_"
+    expected_token = f"{color_prefix}{chess.piece_name(expected_piece.piece_type)}"
+    spare_token = f"{color_prefix}spare_{chess.piece_name(expected_piece.piece_type)}"
 
-    expected_token = _piece_type_token(piece)
-    if expected_token not in piece_name:
+    if not piece_name.startswith(expected_token) and not piece_name.startswith(spare_token):
         raise BoardStateError(
             f"Square {square_name} expects a {expected_token}, got piece '{piece_name}'."
         )
 
 
 def validate_board_state(
-    mj_model: mujoco.MjModel,
+    model: mujoco.MjModel,
     mj_data: mujoco.MjData,
     board: chess.Board,
     square_to_piece: dict[str, str],
@@ -112,7 +104,7 @@ def validate_board_state(
                 f"square={square_name} | piece={piece_name} | up_z={up_z:.4f}"
             )
 
-    BoardObserver(mj_model, mj_data).verify_stability(
+    BoardObserver(model, mj_data).verify_stability(
         active_piece_names=set(square_to_piece.values())
     )
 
@@ -120,41 +112,55 @@ def validate_board_state(
 def detect_physical_instability(
     mj_model: mujoco.MjModel,
     mj_data: mujoco.MjData,
-    board: chess.Board,
     square_to_piece: dict[str, str],
-    controller,
-) -> None:
-    """Raise if the scene no longer matches the expected logical state."""
-    validate_board_state(mj_model, mj_data, board, square_to_piece, controller)
+) -> list[str]:
+    """Return a list of pieces that are physically unstable (tilted or fallen)."""
+    unstable = []
+    active_names = set(square_to_piece.values())
+
+    for name in active_names:
+        try:
+            body = mj_data.body(name)
+            up_z = _up_z_from_quat(body.xquat)
+            if up_z < TILT_THRESHOLD_COS:
+                unstable.append(name)
+        except KeyError:
+            continue
+    return unstable
 
 
-def run_freeze_loop(
-    viewer=None,
-    mj_model: Optional[mujoco.MjModel] = None,
-    mj_data: Optional[mujoco.MjData] = None,
-    sleep_sec: float = 0.1,
-    max_cycles: Optional[int] = None,
-) -> None:
-    """Keep the simulator open at the failing state for manual inspection."""
+def run_freeze_loop(viewer, mj_model, mj_data, max_cycles: int | None = None) -> None:
+    """Keep the simulation frozen and the viewer open for inspection."""
+    if viewer is None:
+        return
+
+    logger.info("Simulation frozen for inspection. Close viewer to exit.")
     cycles = 0
-    while True:
-        if viewer is not None:
-            if not viewer.is_running():
-                break
-            if mj_model is not None and mj_data is not None:
-                mujoco.mj_forward(mj_model, mj_data)
-            viewer.sync()
-
-        time.sleep(sleep_sec)
-        cycles += 1
+    while viewer.is_running():
         if max_cycles is not None and cycles >= max_cycles:
             break
+        
+        # Keep piece joints locked via high damping or zero velocity
+        # (Though in passive viewer, we just don't call mj_step)
+        mujoco.mj_forward(mj_model, mj_data)
+        viewer.sync()
+        time.sleep(0.1)
+        cycles += 1
 
 
-def freeze_on_exception(exc: Exception, viewer=None, mj_model=None, mj_data=None) -> None:
-    """Log a fatal exception and freeze the simulator state for inspection."""
-    logger.error(
-        "Fatal RoboChess error. Freezing simulation for inspection.",
-        exc_info=(type(exc), exc, exc.__traceback__),
-    )
-    run_freeze_loop(viewer=viewer, mj_model=mj_model, mj_data=mj_data)
+def freeze_on_exception(
+    exc: Exception,
+    viewer=None,
+    mj_model=None,
+    mj_data=None,
+) -> None:
+    """Abort gameplay, log the error, and freeze the scene for visual debugging."""
+    logger.error("FATAL RUNTIME EXCEPTION: %s", exc, exc_info=True)
+
+    if viewer:
+        run_freeze_loop(viewer, mj_model, mj_data)
+    
+    # Do not exit(1) during tests
+    import sys
+    if "pytest" not in sys.modules:
+        sys.exit(1)

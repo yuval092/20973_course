@@ -105,6 +105,7 @@ def generate_chess_world() -> str:
     xml: list[str] = []
     xml.append('<mujoco model="fetch_chess">')
     xml.append('    <include file="fetch.xml"/>')
+    xml.append('    <option solver="Newton" iterations="100"/>')
     xml.append('    <visual>')
     xml.append('        <quality shadowsize="0"/>')
     xml.append('    </visual>')
@@ -120,9 +121,10 @@ def generate_chess_world() -> str:
     xml.append('        <light pos="0 0 2" dir="0 0 -1" directional="true"/>')
 
     table_half_height = TABLE_HEIGHT / 2
+    # Table is visual and colliding fallback.
     xml.append(
-        f'        <geom name="table" type="box" size="0.5 0.5 {table_half_height}" '
-        f'pos="{BOARD_CENTER[0]} {BOARD_CENTER[1]} {table_half_height}" '
+        f'        <geom name="table" type="box" size="0.5 0.5 {table_half_height:.4f}" '
+        f'pos="{BOARD_CENTER[0]} {BOARD_CENTER[1]} {table_half_height:.4f}" '
         f'rgba="0.6 0.6 0.6 1" contype="1" conaffinity="1"/>'
     )
     xml.append(
@@ -141,15 +143,16 @@ def generate_chess_world() -> str:
     underlay_half_thickness = 0.0007
     underlay_z = TABLE_HEIGHT - underlay_half_thickness
     board_collision_half_extent = board_half + 0.040
-    # Keep the collision top flush with the visible board surface so pieces
-    # start exactly supported instead of spawning in slight penetration.
-    board_collision_half_thickness = 0.012
-    board_collision_z = TABLE_HEIGHT + 0.001 - board_collision_half_thickness
+    # Massive 10cm thick board collision volume.
+    board_collision_half_thickness = 0.050
+    # Top surface is exactly flush with TABLE_HEIGHT.
+    board_collision_z = TABLE_HEIGHT - board_collision_half_thickness
     xml.append(
         f'        <geom name="board_collision" type="box" '
         f'size="{board_collision_half_extent:.4f} {board_collision_half_extent:.4f} {board_collision_half_thickness:.4f}" '
         f'pos="{BOARD_CENTER[0]:.3f} {BOARD_CENTER[1]:.3f} {board_collision_z:.4f}" '
-        f'rgba="0 0 0 0" condim="4" solimp="0.99 0.99 0.001" solref="0.01 1" friction="0.8 0.02 0.002" />'
+        f'rgba="0 0.5 0 0.5" condim="3" friction="1.2 0.02 0.002" contype="1" conaffinity="1" '
+        f'solimp="0.95 0.99 0.001" solref="0.01 1" />'
     )
     xml.append(
         f'        <geom name="board_underlay" type="box" '
@@ -196,7 +199,7 @@ def generate_chess_world() -> str:
             z = TABLE_HEIGHT + square_half_thickness
             xml.append(
                 f'        <geom name="{name}" type="box" '
-                f'size="{square_half_size} {square_half_size} {square_half_thickness}" '
+                f'size="{square_half_size:.4f} {square_half_size:.4f} {square_half_thickness:.4f}" '
                 f'pos="{x:.3f} {y:.3f} {z:.4f}" material="{material}" contype="0" conaffinity="0"/>'
             )
 
@@ -213,35 +216,21 @@ def generate_chess_world() -> str:
 
     hitbox_half_extent_xy = 0.014
     hitbox_half_extent_z = 0.012
-    # Spawn pieces exactly at grasp height to minimize drop energy during
-    # initial simulation settling (prevents lateral drift).
-    # Board collision is thickened internally to avoid penetration.
-    piece_z = Z_GRASP
+    # Spawn pieces exactly supported by the top surface.
+    piece_z = TABLE_HEIGHT + hitbox_half_extent_z
+    
     back_line = ["rook", "knight", "bishop", "queen", "king", "bishop", "knight", "rook"]
-
-    mesh_z_offsets = {
-        "pawn": 0.0040,
-        "rook": 0.0050,
-        "knight": 0.0050,
-        "bishop": 0.0050,
-        "queen": 0.0060,
-        "king": 0.0060,
-    }
 
     def add_piece(name, file_idx, rank_idx, color, piece_type):
         x = _file_x(file_idx)
         y = _rank_y(rank_idx)
         material = "white_piece" if color == "white" else "black_piece"
-        mesh_z = mesh_z_offsets[piece_type]
         xml.append(f'        <body name="{name}" pos="{x:.3f} {y:.3f} {piece_z:.4f}">')
         xml.append('            <joint type="free" damping="5.0"/>')
         xml.append(
-            f'            <geom type="mesh" mesh="chess_{piece_type}_mesh" material="{material}" '
-            f'pos="0 0 {mesh_z:.4f}" mass="0" contype="2" conaffinity="2" friction="1.2 0.02 0.002"/>'
-        )
-        xml.append(
             f'            <geom type="cylinder" size="{hitbox_half_extent_xy} '
-            f'{hitbox_half_extent_z}" rgba="1 0 0 0" contype="1" conaffinity="1" condim="3" '
+            f'{hitbox_half_extent_z}" material="{material}" condim="3" '
+            f'contype="1" conaffinity="1" '
             f'mass="0.08" solimp="0.95 0.99 0.001" solref="0.01 1" friction="1.2 0.02 0.002"/>'
         )
         xml.append(f'            <site name="{name}_site" pos="0 0 0" size="0.02 0.02 0.02" rgba="0 0 0 0"/>')
@@ -263,23 +252,16 @@ def generate_chess_world() -> str:
 
     def add_spare_piece(name, x, y, color, piece_type):
         material = "white_piece" if color == "white" else "black_piece"
-        mesh_z = mesh_z_offsets[piece_type]
         xml.append(f'        <body name=\"{name}\" pos=\"{x:.3f} {y:.3f} -0.0500\">')
         xml.append('            <joint type="free" damping="5.0"/>')
         xml.append(
-            f'            <geom type="mesh" mesh="chess_{piece_type}_mesh" material=\"{material}\" rgba="0 0 0 0" '
-            f'pos="0 0 {mesh_z:.4f}" mass="0" contype="0" conaffinity="0" friction="1.2 0.02 0.002"/>'
-        )
-        xml.append(
             f'            <geom type="cylinder" size=\"{hitbox_half_extent_xy} '
-            f'{hitbox_half_extent_z}\" rgba="0 0 0 0" contype="0" conaffinity="0" condim="3" '
-            f'mass="0.08" solimp="0.95 0.99 0.001" solref="0.01 1" friction="1.2 0.02 0.002"/>'
+            f'{hitbox_half_extent_z}\" material=\"{material}\" rgba=\"0 0 0 0\" '
+            f'contype=\"0\" conaffinity=\"0\" condim=\"3\" '
+            f'mass=\"0.08\" solimp=\"0.95 0.99 0.001\" solref=\"0.01 1\" friction=\"1.2 0.02 0.002\"/>'
         )
         xml.append('        </body>')
 
-    # Promotion spares remain hidden below the table until a pawn is swapped
-    # out for its promoted replacement during runtime.
-    # Generate 2 of each spare type per color
     for count in (1, 2):
         for idx, p_type in enumerate(spare_types):
             x_offset = (idx * 0.1 - 0.15) + (count - 1) * 0.4
@@ -289,27 +271,27 @@ def generate_chess_world() -> str:
     graveyard_half_x, graveyard_half_y, graveyard_half_z = GRAVEYARD_PLATFORM_HALF_EXTENTS
     graveyard_top_z = TABLE_HEIGHT + GRAVEYARD_PLATFORM_HEIGHT
     graveyard_body_z = graveyard_top_z - graveyard_half_z
-    tray_center_dx = 0.075
-    tray_center_dy = 0.075
 
     xml.append(
         f'        <body name="white_graveyard" '
-        f'pos="{WHITE_GRAVEYARD_ORIGIN[0] + tray_center_dx:.3f} '
-        f'{WHITE_GRAVEYARD_ORIGIN[1] + tray_center_dy:.3f} {graveyard_body_z:.3f}">'
+        f'pos="{WHITE_GRAVEYARD_ORIGIN[0]:.3f} '
+        f'{WHITE_GRAVEYARD_ORIGIN[1]:.3f} {graveyard_body_z:.3f}">'
     )
     xml.append(
         f'            <geom type="box" size="{graveyard_half_x:.3f} {graveyard_half_y:.3f} '
-        f'{graveyard_half_z:.3f}" rgba="0.5 0.5 0.5 0.7"/>'
+        f'{graveyard_half_z:.3f}" rgba="0.5 0.5 0.5 0.7" contype="1" conaffinity="1" '
+        f'solimp="0.95 0.99 0.001" solref="0.01 1" />'
     )
     xml.append('        </body>')
     xml.append(
         f'        <body name="black_graveyard" '
-        f'pos="{BLACK_GRAVEYARD_ORIGIN[0] + tray_center_dx:.3f} '
-        f'{BLACK_GRAVEYARD_ORIGIN[1] + tray_center_dy:.3f} {graveyard_body_z:.3f}">'
+        f'pos="{BLACK_GRAVEYARD_ORIGIN[0]:.3f} '
+        f'{BLACK_GRAVEYARD_ORIGIN[1]:.3f} {graveyard_body_z:.3f}">'
     )
     xml.append(
         f'            <geom type="box" size="{graveyard_half_x:.3f} {graveyard_half_y:.3f} '
-        f'{graveyard_half_z:.3f}" rgba="0.5 0.5 0.5 0.7"/>'
+        f'{graveyard_half_z:.3f}" rgba="0.5 0.5 0.5 0.7" contype="1" conaffinity="1" '
+        f'solimp="0.95 0.99 0.001" solref="0.01 1" />'
     )
     xml.append('        </body>')
     xml.append('    </worldbody>')

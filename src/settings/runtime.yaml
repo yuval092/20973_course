@@ -1,7 +1,7 @@
-board_center: [1.18, 0.75, 0.4] # Physical XYZ center of the 8x8 chessboard in the MuJoCo world.
-square_size: 0.07 # Width and height of a single square on the board in meters.
-table_height: 0.4 # The Z-coordinate of the tabletop surface.
-z_grasp: 0.413 # Target height for the gripper center when picking up or placing a piece.
+board_center: [1.23, 0.75, 0.421] # Physical XYZ center of the 8x8 chessboard in the MuJoCo world.
+square_size: 0.05 # Width and height of a single square on the board in meters (40x40cm total).
+table_height: 0.421 # The Z-coordinate of the tabletop surface (surface at 0.422).
+z_grasp: 0.434 # Target height for the gripper center (piece COM at 0.434).
 z_safe: 0.56 # Default minimum height for safe horizontal transit across the board.
 
 n_substeps: 20 # Number of MuJoCo simulation steps executed for every one controller action.
@@ -47,9 +47,9 @@ l_finger_actuator: robot0:l_gripper_finger_joint # MuJoCo joint name for the lef
 r_finger_actuator: robot0:r_gripper_finger_joint # MuJoCo joint name for the right gripper finger.
 grip_site: robot0:grip # MuJoCo site name representing the center point of the gripper.
 
-white_graveyard_origin: [0.93, 0.30, 0.425] # Starting XYZ coordinate for white captured piece tray.
-black_graveyard_origin: [1.15, 0.30, 0.425] # Starting XYZ coordinate for black captured piece tray.
-graveyard_spacing: 0.05 # Distance between pieces in the graveyard grid layout.
+white_graveyard_origin: [0.92, 0.40, 0.421] # Starting XYZ coordinate for white captured piece tray.
+black_graveyard_origin: [0.92, 1.10, 0.421] # Starting XYZ coordinate for black captured piece tray.
+graveyard_spacing: 0.032 # Distance between pieces in the graveyard grid layout.
 graveyard_cols: 4 # Number of columns used to arrange captured pieces in the graveyard.
 graveyard_platform_half_extents: [0.10, 0.09, 0.012] # Half-width/depth/height of the physical graveyard tray geoms.
 graveyard_platform_height: 0.024 # The total thickness of the graveyard platform geom.

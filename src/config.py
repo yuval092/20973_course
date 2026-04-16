@@ -169,6 +169,29 @@ STOCKFISH_TIME_LIMIT = _RUNTIME["stockfish_time_limit"]
 HF_REPO_ID = _RUNTIME["hf_repo_id"]
 HF_FILENAME = _RUNTIME["hf_filename"]
 
+# Fine-tuned model paths
+FINETUNED_MODEL_PATH = os.getenv("FINETUNED_MODEL_PATH", "checkpoints/final/tqc_robochess_final")
+PRETRAINED_MODEL_PATH = HF_REPO_ID # Default to loading from hub
+
 # Stability monitoring
 TILT_THRESHOLD_COS = _RUNTIME["tilt_threshold_cos"]
 DISPLACEMENT_THRESHOLD = _RUNTIME["displacement_threshold"]
+
+# Piece names for easy lookup
+PIECE_NAMES = [
+    f"{color}_{p_type}{suffix}"
+    for color in ("w", "b")
+    for p_type, suffix in (
+        ("pawn_1", ""), ("pawn_2", ""), ("pawn_3", ""), ("pawn_4", ""),
+        ("pawn_5", ""), ("pawn_6", ""), ("pawn_7", ""), ("pawn_8", ""),
+        ("rook_1", ""), ("rook_2", ""), ("knight_1", ""), ("knight_2", ""),
+        ("bishop_1", ""), ("bishop_2", ""), ("queen", ""), ("king", "")
+    )
+]
+# Add spares too if needed for training awareness
+PIECE_NAMES += [
+    f"{color}_spare_{p_type}_{count}"
+    for color in ("w", "b")
+    for p_type in ("queen", "rook", "bishop", "knight")
+    for count in (1, 2)
+]

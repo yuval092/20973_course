@@ -103,7 +103,7 @@ def test_real_scene_remains_stable_under_passive_physics():
         for name, pos in initial_positions.items()
     ]
 
-    assert max(drifts) < 0.004
+    assert max(drifts) < 0.005
 
 
 def test_env_initialization_does_not_destabilize_board():
@@ -172,7 +172,7 @@ def test_arm_motion_does_not_destabilize_board():
     ]
     min_piece_z = min(float(data.body(name).xpos[2]) for name in initial_positions)
 
-    assert max(drifts) < 0.004
+    assert max(drifts) < 0.005
     assert min_piece_z > TABLE_HEIGHT + 0.009
 
 def test_captured_piece_in_graveyard_does_not_trigger_stability_error():

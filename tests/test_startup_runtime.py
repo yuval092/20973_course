@@ -77,7 +77,9 @@ def test_bootstrap_game_systems_success_with_mocked_policy(monkeypatch):
     fake_policy = object()
     monkeypatch.setattr(game_runtime, "load_rl_policy", lambda env, repo_id, filename: fake_policy)
 
+    # bootstrap_game_systems already calls initialize_square_to_piece
     systems = bootstrap_game_systems()
+    print(f"TEST DEBUG: b_rook_1 xml pos = {systems.mj_model.body('b_rook_1').pos}")
 
     try:
         assert systems.rl_model is fake_policy
@@ -89,11 +91,8 @@ def test_bootstrap_game_systems_success_with_mocked_policy(monkeypatch):
 
 def test_bootstrap_game_systems_propagates_model_load_failure(monkeypatch):
     monkeypatch.setattr(game_runtime, "load_rl_policy", lambda env, repo_id, filename: (_ for _ in ()).throw(RLModelError("bad model")))
+    monkeypatch.setattr(game_runtime, "ChessGameManager", MagicMock())
 
-    # bootstrap_game_systems creates a manager internally, we must ensure it gets closed
-    # but since it raises, we might need to be careful. 
-    # Actually it's easier to just use the fixture if we can, but bootstrap creates its own.
-    
     with pytest.raises(RLModelError, match="bad model"):
         bootstrap_game_systems()
 

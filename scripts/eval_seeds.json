@@ -1,0 +1,14 @@
+{
+  "unit_manipulation": [
+    {"piece": "w_pawn_1", "src": "e2", "dst": "e4", "stage": 1},
+    {"piece": "b_knight_1", "src": "g8", "dst": "f6", "stage": 2},
+    {"piece": "w_queen", "src": "d1", "dst": "d4", "stage": 3}
+  ],
+  "legal_positions": [
+    {"fen": "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1",
+     "move": "e7e5", "expected_piece": "b_pawn_5"}
+  ],
+  "sequential": [
+    {"game_pgn": "1. e4 e5 2. Nf3 Nc6 3. Bb5"}
+  ]
+}

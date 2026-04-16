@@ -85,11 +85,7 @@ class ChessPickPlaceEnv(gym.Env):
             self.set_piece_mesh_collision_enabled(piece_name, enabled=False)
             self.set_piece_active_damping(piece_name, active=False)
 
-        # Settle the scene dynamically to let pieces rest at their new spawned states.
-        # This addresses initial spawn energy cleanly without snapping.
-        for _ in range(200):
-            mujoco.mj_step(self.model, self.data, self.n_substeps)
-
+        # board_half_extent = 4 * SQUARE_SIZE
         board_half_extent = 4 * SQUARE_SIZE
         self._mocap_min = np.array([
             BOARD_CENTER[0] - board_half_extent - WORKSPACE_XY_MARGIN,
@@ -187,6 +183,14 @@ class ChessPickPlaceEnv(gym.Env):
 
         self.data.mocap_pos[0] = gripper_target
         self.data.mocap_quat[0] = gripper_rotation
+        
+        # Teleport pieces to a safe distance to avoid collisions 
+        # during the homing motion.
+        safe_pos = np.array([2.0, 2.0, 0.5])
+        for name in piece_state:
+            joint_id = self.model.body(name).jntadr[0]
+            self.data.joint(joint_id).qpos[:3] = safe_pos
+        
         for _ in range(10):
             mujoco.mj_step(self.model, self.data, nstep=self.n_substeps)
 
@@ -227,7 +231,7 @@ class ChessPickPlaceEnv(gym.Env):
             geomadr = int(np.asarray(body.geomadr).item())
             for geom_offset in range(geomnum):
                 geom_id = geomadr + geom_offset
-                if self.model.geom_type[geom_id] == mujoco.mjtGeom.mjGEOM_MESH:
+                if self.model.geom_type[geom_id] in {mujoco.mjtGeom.mjGEOM_MESH, mujoco.mjtGeom.mjGEOM_CYLINDER}:
                     mesh_geom_ids[name] = geom_id
                     break
         return mesh_geom_ids

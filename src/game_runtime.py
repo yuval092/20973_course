@@ -96,13 +96,19 @@ def initialize_square_to_piece(mj_model: mujoco.MjModel, mj_data: mujoco.MjData)
         if not _is_piece_body(body_name):
             continue
 
-        pos = mj_data.body(i).xpos
-        file_idx = int(round((pos[0] - a1_pos[0]) / file_step))
-        rank_idx = int(round((pos[1] - a1_pos[1]) / rank_step))
+        # Use the model's initial position (XML) instead of live data xpos
+        # to be immune to any initial physics settling or homing collisions.
+        pos = body.pos
+        f_val = (pos[0] - a1_pos[0]) / file_step
+        r_val = (pos[1] - a1_pos[1]) / rank_step
+        file_idx = int(round(f_val))
+        rank_idx = int(round(r_val))
 
         if 0 <= file_idx < 8 and 0 <= rank_idx < 8:
             square_name = chess.square_name(chess.square(file_idx, rank_idx))
             square_to_piece[square_name] = body_name
+        else:
+            logger.debug(f"Piece {body_name} at {pos} mapped to OUT: f_val={f_val:.4f}, r_val={r_val:.4f}")
 
     return square_to_piece
 
@@ -110,8 +116,17 @@ def initialize_square_to_piece(mj_model: mujoco.MjModel, mj_data: mujoco.MjData)
 def validate_initial_mapping(square_to_piece: SquareMap) -> None:
     """Validate that the scene booted with a complete 32-piece board mapping."""
     if len(square_to_piece) != 32:
+        # Sort keys for deterministic error messages
+        missing = []
+        for f in range(8):
+            for r in [0, 1, 6, 7]:
+                sq = chess.square_name(chess.square(f, r))
+                if sq not in square_to_piece:
+                    missing.append(sq)
+        
         raise BoardStateError(
             f"Expected 32 pieces, found {len(square_to_piece)}. "
+            f"Missing squares: {missing}. "
             f"Mapped squares: {sorted(square_to_piece.keys())}"
         )
 
@@ -131,20 +146,34 @@ def load_scene(scene_xml: str = SCENE_XML) -> tuple[mujoco.MjModel, mujoco.MjDat
 
 
 def load_rl_policy(env: ChessPickPlaceEnv, repo_id: str = HF_REPO_ID, filename: str = HF_FILENAME) -> Any:
-    """Load the pretrained TQC checkpoint used by the runtime."""
-    logger.info("Loading pretrained model: %s...", repo_id)
+    """Load the TQC checkpoint. Prioritizes local fine-tuned model if available."""
+    from src.config import FINETUNED_MODEL_PATH
+    
+    model_path = None
+    if FINETUNED_MODEL_PATH and os.path.exists(FINETUNED_MODEL_PATH + ".zip"):
+        model_path = FINETUNED_MODEL_PATH
+        logger.info("Loading local fine-tuned model: %s...", model_path)
+    elif FINETUNED_MODEL_PATH and os.path.exists(FINETUNED_MODEL_PATH):
+        # Handle case without .zip extension if it was provided fully
+        model_path = FINETUNED_MODEL_PATH
+        logger.info("Loading local fine-tuned model: %s...", model_path)
+    
     try:
-        checkpoint = load_from_hub(repo_id, filename)
-        rl_model = TQC.load(
-            checkpoint,
-            env=env,
-            custom_objects={
-                "learning_rate": 0.001,
-                "lr_schedule": lambda _: 0.001,
-                "replay_buffer_kwargs": {},
-                "replay_buffer_class": DictReplayBuffer,
-            },
-        )
+        if model_path:
+            rl_model = TQC.load(model_path, env=env)
+        else:
+            logger.info("Loading pretrained model from hub: %s...", repo_id)
+            checkpoint = load_from_hub(repo_id, filename)
+            rl_model = TQC.load(
+                checkpoint,
+                env=env,
+                custom_objects={
+                    "learning_rate": 0.001,
+                    "lr_schedule": lambda _: 0.001,
+                    "replay_buffer_kwargs": {},
+                    "replay_buffer_class": DictReplayBuffer,
+                },
+            )
         logger.info("TQC model loaded successfully.")
         return rl_model
     except Exception as exc:
@@ -158,68 +187,77 @@ def bootstrap_game_systems(
 ) -> GameSystems:
     """Build all runtime systems and validate the initial physical board state."""
     mj_model, mj_data = load_scene(scene_xml)
-    env = ChessPickPlaceEnv(mj_model, mj_data, n_substeps=N_SUBSTEPS)
-    arm_home_grip = env.get_grip_pos().copy()
-    dummy_systems = GameSystems(
-        mj_model=mj_model,
-        mj_data=mj_data,
-        env=env,
-        rl_model=None,
-        manager=ChessGameManager(),
-        planner=OperationPlanner(),
-        controller=ExecutionController(None, env),
-        square_to_piece={},
-        arm_home_grip=arm_home_grip,
-        check_registry=build_default_check_registry(),
-        captured_count={"white": 0, "black": 0},
-    )
-    dummy_systems.check_registry.run(CheckHook.POST_SCENE_LOAD, CheckContext(hook=CheckHook.POST_SCENE_LOAD, systems=dummy_systems))
-    log_event(logger, logging.INFO, "scene_loaded", scene_xml=scene_xml)
-
-    rl_model = load_rl_policy(env, repo_id=repo_id, filename=filename)
-    manager = dummy_systems.manager
-    planner = dummy_systems.planner
-    controller = dummy_systems.controller
-    controller.rl_model = rl_model
-
+    
+    # Initialize square_to_piece mapping BEFORE creating the env
+    # because the env constructor triggers robot homing which might hit pieces.
     square_to_piece = initialize_square_to_piece(mj_model, mj_data)
     log_event(logger, logging.INFO, "board_initialized", mapped_pieces=len(square_to_piece))
     validate_initial_mapping(square_to_piece)
-    systems = GameSystems(
-        mj_model=mj_model,
-        mj_data=mj_data,
-        env=env,
-        rl_model=rl_model,
-        manager=manager,
-        planner=planner,
-        controller=controller,
-        square_to_piece=square_to_piece,
-        arm_home_grip=arm_home_grip,
-        check_registry=dummy_systems.check_registry,
-        captured_count={"white": 0, "black": 0},
-    )
 
-    def _run_stage_checks(phase: CheckHook, **payload: Any) -> None:
-        """Adapt controller stage payloads into the stable check-context shape."""
-        context = CheckContext(
-            hook=phase,
-            systems=systems,
-            viewer=payload.get("viewer"),
-            stage=payload.get("stage"),
-            op=payload.get("op"),
-            extra={
-                key: value
-                for key, value in payload.items()
-                if key not in {"viewer", "stage", "op"}
-            },
+    env = ChessPickPlaceEnv(mj_model, mj_data, n_substeps=N_SUBSTEPS)
+    arm_home_grip = env.get_grip_pos().copy()
+    
+    manager = ChessGameManager()
+    try:
+        dummy_systems = GameSystems(
+            mj_model=mj_model,
+            mj_data=mj_data,
+            env=env,
+            rl_model=None,
+            manager=manager,
+            planner=OperationPlanner(),
+            controller=ExecutionController(None, env),
+            square_to_piece=square_to_piece,
+            arm_home_grip=arm_home_grip,
+            check_registry=build_default_check_registry(),
+            captured_count={"white": 0, "black": 0},
         )
-        systems.check_registry.run(phase, context)
+        dummy_systems.check_registry.run(CheckHook.POST_SCENE_LOAD, CheckContext(hook=CheckHook.POST_SCENE_LOAD, systems=dummy_systems))
+        log_event(logger, logging.INFO, "scene_loaded", scene_xml=scene_xml)
 
-    controller.set_stage_event_handler(
-        _run_stage_checks
-    )
-    systems.check_registry.run(CheckHook.PROGRAM_START, CheckContext(hook=CheckHook.PROGRAM_START, systems=systems))
-    return systems
+        rl_model = load_rl_policy(env, repo_id=repo_id, filename=filename)
+        planner = dummy_systems.planner
+        controller = dummy_systems.controller
+        controller.rl_model = rl_model
+
+        systems = GameSystems(
+            mj_model=mj_model,
+            mj_data=mj_data,
+            env=env,
+            rl_model=rl_model,
+            manager=manager,
+            planner=planner,
+            controller=controller,
+            square_to_piece=square_to_piece,
+            arm_home_grip=arm_home_grip,
+            check_registry=dummy_systems.check_registry,
+            captured_count={"white": 0, "black": 0},
+        )
+
+        def _run_stage_checks(phase: CheckHook, **payload: Any) -> None:
+            """Adapt controller stage payloads into the stable check-context shape."""
+            context = CheckContext(
+                hook=phase,
+                systems=systems,
+                viewer=payload.get("viewer"),
+                stage=payload.get("stage"),
+                op=payload.get("op"),
+                extra={
+                    key: value
+                    for key, value in payload.items()
+                    if key not in {"viewer", "stage", "op"}
+                },
+            )
+            systems.check_registry.run(phase, context)
+
+        controller.set_stage_event_handler(
+            _run_stage_checks
+        )
+        systems.check_registry.run(CheckHook.PROGRAM_START, CheckContext(hook=CheckHook.PROGRAM_START, systems=systems))
+        return systems
+    except Exception:
+        manager.close()
+        raise
 
 
 def _update_square_mapping(systems: GameSystems, target_square: str, dest_square: str) -> None:
@@ -279,10 +317,7 @@ def handle_promotion(
         if mj_model.geom_type[geom_id] == mujoco.mjtGeom.mjGEOM_CYLINDER:
             mj_model.geom_contype[geom_id] = 1
             mj_model.geom_conaffinity[geom_id] = 1
-            mj_model.geom_rgba[geom_id] = [1.0, 0.0, 0.0, 0.0]
-        elif mj_model.geom_type[geom_id] == mujoco.mjtGeom.mjGEOM_MESH:
-            mj_model.geom_contype[geom_id] = 2
-            mj_model.geom_conaffinity[geom_id] = 2
+            # Make it visible with correct color
             mj_model.geom_rgba[geom_id] = [1.0, 1.0, 1.0, 1.0] if is_white else [0.1, 0.1, 0.1, 1.0]
 
     dest_pos = controller.get_pos(op.dest_square)
@@ -300,15 +335,28 @@ def execute_human_ops(
     square_to_piece: SquareMap,
     systems: GameSystems = None,
     viewer=None,
+    use_arm: bool = False,
 ) -> None:
-    """Execute human move operations via the physical controller or teleportation for captures."""
+    """Execute human move operations via teleportation (default) or robotic arm.
+    
+    Note: Robotic arm execution for board moves requires fine-tuned policy 
+    to handle the full board workspace.
+    """
     for op in ops:
-        if "graveyard" in op.dest_square:
+        if "graveyard" in op.dest_square or not use_arm:
             target_pos = controller.get_pos(op.dest_square)
-            if systems:
+            if systems and "graveyard" in op.dest_square:
                 color = "white" if "white" in op.dest_square else "black"
                 target_pos = _get_graveyard_grid_pos(target_pos, systems.captured_count[color])
             teleport_piece(mj_model, mj_data, op.piece_name, target_pos)
+            
+            if systems:
+                _update_square_mapping(systems, op.target_square, op.dest_square)
+            else:
+                if "graveyard" in op.dest_square:
+                    square_to_piece.pop(op.target_square, None)
+                elif op.target_square in square_to_piece:
+                    square_to_piece[op.dest_square] = square_to_piece.pop(op.target_square)
         else:
             log_event(logger, logging.INFO, "human_execute_op", piece=op.piece_name, src=op.target_square, dest=op.dest_square)
             result = controller.execute_op(op, viewer=viewer)
@@ -316,15 +364,8 @@ def execute_human_ops(
                 raise ExecutionError(
                     f"Physical execution failed for human move {op.piece_name} {op.target_square}->{op.dest_square}: {result.details}"
                 )
-
-        if systems:
-            _update_square_mapping(systems, op.target_square, op.dest_square)
-        else:
-            # Fallback for old tests if systems is not passed
-            if "graveyard" in op.dest_square:
-                square_to_piece.pop(op.target_square, None)
-            elif op.target_square in square_to_piece:
-                square_to_piece[op.dest_square] = square_to_piece.pop(op.target_square)
+            if systems:
+                _update_square_mapping(systems, op.target_square, op.dest_square)
 
         if op.promotion:
             is_white = op.piece_name.startswith("w_")
