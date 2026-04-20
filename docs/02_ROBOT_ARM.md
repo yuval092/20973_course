@@ -4,13 +4,14 @@ The Fetch robotic arm is the primary actor in RoboChess. Understanding how it mo
 
 ## 🤖 The Hardware: Fetch Manipulator
 - **Type**: 7-Degree of Freedom (7-DOF) robotic arm.
-- **End-Effector**: A parallel-jaw gripper. It has two fingers that move symmetrically.
-- **Control Mode**: In this project, we use **Cartesian Control**. Instead of telling the robot "rotate joint 3 by 10 degrees," we tell it "move the gripper center to coordinate (X, Y, Z)."
+- **End-Effector**: A parallel-jaw gripper. It has two fingers driven by Position PID actuators (`kp="30000"`).
+- **Mocap & IK Control**: While the arm has 7 physical joints, we do not actuate them directly with motors. Instead, the simulation features an invisible, magical "Mocap" (Motion Capture) body tracking at the tip of the gripper. A rigid **Weld Equality Constraint** is defined between the Mocap body and the robot's end-effector. 
+
+To move the arm to a Cartesian coordinate (X,Y,Z), the `ExecutionController` teleports the invisible Mocap body. The underlying MuJoCo engine mathematically calculates the forces required on all 7 joints to pull the heavy physical arm towards the Mocap target, essentially solving Inverse Kinematics recursively.
 
 ### Key Concept: Joint Space vs. Cartesian Space
-- **Joint Space**: The set of angles for all 7 motors in the arm.
-- **Cartesian Space**: The 3D world (X, Y, Z).
-- **Inverse Kinematics (IK)**: The math used to calculate which joint angles are needed to reach a specific XYZ. MuJoCo and our RL policy handle this conversion for us.
+- **Joint Space**: The specific native rotational angles of the 7 mechanical motors.
+- **Cartesian Space**: A physical point in 3D scale (X, Y, Z). Our logic exclusively works in Cartesian space and relies on the Mocap Weld constraint to handle the joint space translation.
 
 ## 🧠 The "Brain": TQC Reinforcement Learning
 We use a pretrained **Truncated Quantile Critics (TQC)** model. TQC is a state-of-the-art RL algorithm that is particularly good at "goal-conditioned" tasks like picking up objects.

@@ -12,7 +12,9 @@ The primary objective of RoboChess is to bridge the gap between "perfect" logica
 ## 🧱 Key Concepts for Beginners
 
 ### 1. What is MuJoCo?
-MuJoCo is a physics engine designed for robotics and biomechanics. Unlike "game" physics engines (like PhysX), MuJoCo is optimized for **accuracy**. It handles complex contacts, joint constraints, and multi-body dynamics with extreme precision. In this project, MuJoCo ensures that if the robot bumps into a pawn, that pawn will actually slide or tip over based on realistic friction and gravity.
+MuJoCo is a physics engine designed for robotics and biomechanics. Unlike "game" physics engines (like PhysX), MuJoCo is optimized for **accuracy**, continuous-time formulation, and rigid-body constraints. It handles complex contacts, joint properties, and multi-body dynamics with extreme precision. 
+
+**Visual vs. Physical Geometries**: In RoboChess, you will see a beautiful environment with detailed meshes (like knights and bishops) and a stylized table. However, MuJoCo maintains a hidden "physical layer" consisting of simplified bounding shapes (like cylinders and box arrays) and bitwise collision masks. The graphics you see are often purely "holograms" covering an underlying geometric simulation.
 
 ### 2. The Fetch Robot
 The robot used in this simulation is the **Fetch**, a mobile manipulator with a 7-degree-of-freedom (7-DOF) arm and a parallel-jaw gripper. It is a standard research robot. In RoboChess, we focus on the arm's ability to reach specific coordinates (Cartesian control) and manipulate pieces.
@@ -44,6 +46,7 @@ python3 main.py
 
 ## 🛠 Project Structure
 -   `src/`: The core source code (refactored for OOP and PEP8).
--   `scripts/`: Utilities for XML generation and scene verification.
--   `tests/`: Comprehensive test suites verifying logic and physics.
+-   `src/settings/runtime.yaml`: The single source of truth for the spatial configuration, physics tolerances, and board geometry (loaded via `src/config.py`). Everything from table height to gripper parameters scales off this file.
+-   `scripts/`: Utilities for XML generation (`generate_xml.py`) and scene verification.
+-   `tests/`: Comprehensive test suites verifying logic and physical boundary integrity.
 -   `docs/`: Detailed technical documentation (which you are reading now).

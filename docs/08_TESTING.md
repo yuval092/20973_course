@@ -29,8 +29,10 @@ PYTHONPATH=. pytest tests/
 
 ## 🧱 Mocking and Simulation
 Because running a full physics step is slow, some tests use **Mocks**:
-- **`DummyEnv`**: A fake environment that returns "Success" instantly so we can test logical flow without waiting for the robot to move.
+- **`DummyEnv`**: A fake environment that returns "Success" instantly so we can test logical flow without waiting for the robot to move. 
 - **`DummyBody`**: A fake MuJoCo object used to test geometric math.
+
+**Limitations of Mocks**: Mocks do not simulate bitwise collision overlaps (`contype` & `conaffinity`) or solver limits. Therefore, passing a logic test does not guarantee a piece won't mathematically explode in the actual MuJoCo solver. This is why full end-to-end headless integration tests are mandatory before merging changes to `generate_xml.py` or `fetch.xml`.
 
 ## 🛡️ The "Sweet Spot" in Testing
 As documented in `02_ROBOT_ARM.md`, the RL policy is only stable within a 0.15m radius.

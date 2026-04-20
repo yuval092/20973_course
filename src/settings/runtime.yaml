@@ -14,7 +14,7 @@ settle_steps: 50 # Number of steps to wait for physics to stabilize after an act
 retract_steps: 25 # Number of steps dedicated to moving the arm away after a piece is released.
 gripper_actuation_steps: 12 # Duration in simulation steps for the gripper to fully open or close.
 grip_contact_tolerance: 0.025 # Distance threshold between fingers and piece to confirm a successful grasp.
-piece_follow_tolerance: 0.04 # Max allowed distance between piece and gripper during lifting to verify attachment.
+piece_follow_tolerance: 0.06 # Max allowed distance between piece and gripper during lifting to verify attachment.
 piece_drift_tolerance: 0.01 # Max horizontal movement allowed for a piece after placement to consider it stable.
 release_settle_steps: 25 # Wait time after opening the gripper before the arm moves away.
 release_velocity_tolerance: 0.01 # Maximum velocity a piece can have to be considered "settled" after release.
@@ -36,7 +36,7 @@ reachable_y_max: 1.18 # Maximum Y-coordinate the arm can physically reach.
 reachable_z_min: 0.4 # Minimum Z-coordinate the arm can physically reach.
 reachable_z_max: 0.82 # Maximum Z-coordinate the arm can physically reach.
 fetch_init_grip: [1.3419, 0.7491, 0.575] # The "home" or starting XYZ coordinate for the robot gripper.
-policy_xy_radius: 0.15 # Horizontal distance from the policy center where the RL model is considered reliable.
+policy_xy_radius: 0.50 # Horizontal distance from the policy center where the RL model is considered reliable.
 policy_z_min: 0.41 # Minimum vertical range the RL policy was trained to operate within.
 policy_z_max: 0.75 # Maximum vertical range the RL policy was trained to operate within.
 

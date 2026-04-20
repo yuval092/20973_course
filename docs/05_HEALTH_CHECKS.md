@@ -15,7 +15,9 @@ Checks are triggered at these logical points:
 ## 🩺 The Registry of Checks
 
 ### 1. Finite State Check (`FiniteStateCheck`)
-Ensures that no value in the simulation has become `NaN` (Not a Number) or `Inf` (Infinity). If the physics "explodes," this check catches it immediately.
+Ensures that no value in the simulation has become `NaN` (Not a Number) or `Inf` (Infinity). 
+
+**The Physics of NaN**: In a rigid-body simulator, if two highly rigid objects (like the robot's metal base and a solid table) accidentally spawn overlapping each other, the physics engine will register a massive negative distance. To resolve this, it calculates a separation force. If the overlap is deep enough, that calculated force approaches infinity, immediately overflowing the floating-point variables in the C++ engine to `NaN`. If the physics "explodes" like this, the simulation is permanently corrupted. This check catches it immediately.
 
 ### 2. Piece Stability Check (`BoardObserver`)
 Checks every piece on the board for:

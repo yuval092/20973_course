@@ -22,6 +22,16 @@ This document records the major "physical" bugs encountered during the developme
 - **The Physics**: In the XML generator script, the graveyard height was being added to the table height. However, the graveyard height was already defined as an absolute world coordinate.
 - **The Fix**: Corrected `scripts/generate_xml.py` to use the graveyard height directly.
 
+## 🐛 Bug 5: The Infinite Plane Singularity
+- **The Issue**: Deep, inexplicable instability. Occasional total simulation implosions triggering `NaN` states in the engine right at startup. 
+- **The Physics**: The `safety_floor` was configured as `type="plane"` at `Z=0.35` while the robot base originated at `Z=0.0`. In MuJoCo, a "plane" defines a literally infinite semi-solid half-space. Thus, the robot's entire lower hemisphere was deeply intersected with an infinite solid object, leading to extreme phantom force generation.
+- **The Fix**: Converted the `safety_floor` from a `plane` to a thin `box`. Furthermore, implemented bitwise collision masking (`contype=4 / conaffinity=4`) and modified the pieces to intersect with that layer (`conaffinity=5`), allowing the robot to pass straight through the floor while dropping pieces were reliably caught.
+
+## 🐛 Bug 6: The Phantom Table Collision
+- **The Issue**: The robotic arm's wheels and base geometry visually intersected with the corner of the gray decorative table.
+- **The Physics**: Just like Bug 5, overlapping geoms with mutual `contype` bits will repel each other aggressively. While mathematically the center-point of the robot barely cleared the table bounds, any sway would trigger a repulsive collision. 
+- **The Fix**: Disabled collision entirely on the gray table (`contype="0" conaffinity="0"`). The table is now a visual "Hologram". The board sits on an invisible `board_collision` pane directly above the table to handle the pieces independently.
+
 ## 🧠 Lessons Learned
 For beginners in robotics:
 1.  **Coordinates are relative**: Always be sure if a number is "relative to the table" or "relative to the world origin."

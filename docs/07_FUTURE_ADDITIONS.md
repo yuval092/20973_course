@@ -4,9 +4,10 @@ RoboChess is a robust prototype, but there is always room to make the physics mo
 
 ## 🚀 Near-Term Improvements
 
-### 1. Adaptive Physics (Friction)
-Currently, all pieces have the same friction.
-- **Improvement**: Set different friction coefficients for the board vs. the gripper fingers. This would allow for more realistic "slipping" if the robot doesn't squeeze hard enough.
+### 1. Adaptive Physics (Friction & Masks)
+Currently, all pieces have the same friction and collision configurations.
+- **Improvement**: Dynamically adjust `solimp` and `solref` modifiers in real-time depending on whether a piece is currently being gripped vs standing free.
+- **Improvement**: Implement dynamic bitwise `contype` masking for human hands. If we implement a VR glove to play against the robot, assigning the human hands `contype="8"` could dynamically allow or prevent interference with the robot's hardware while allowing shared physics interaction with the pieces.
 
 ### 2. Multi-Agent Support
 Currently, the Black pieces are moved by a simple AI loop.

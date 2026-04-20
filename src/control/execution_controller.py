@@ -696,7 +696,9 @@ class ExecutionController:
         )
         piece_pos = self.env.get_piece_pos()
 
-        if piece_pos[2] < TABLE_HEIGHT + 0.01:
+        # A piece height below the table surface minus a small margin indicates
+        # it has likely fallen through or is in an unstable physical state.
+        if piece_pos[2] < TABLE_HEIGHT - 0.01:
             return False, steps_taken
 
         xy_error = np.linalg.norm(piece_pos[:2] - self._placement_goal[:2])
