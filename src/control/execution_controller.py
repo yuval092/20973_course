@@ -1,8 +1,11 @@
 """
 Execution Controller — Staged Cartesian Manipulation
 
-Executes pick-and-place operations using explicit, debuggable stages:
+This module handles the execution of pick-and-place operations for chess pieces
+using a staged approach. It breaks down the complex movement into discrete,
+verifiable stages to improve reliability and debuggability.
 
+The stages include:
   1. HOME_RESET
   2. PREHOVER_SRC
   3. PREGRASP_NARROW
@@ -16,16 +19,10 @@ Executes pick-and-place operations using explicit, debuggable stages:
  11. POST_RELEASE_CLEARANCE
  12. RETURN_HOME
  13. FINAL_PLACEMENT_SETTLE
-
-The stage split makes it much easier to localize failures than the
-previous monolithic phase rollout. Each stage has a concrete target and
-its own success condition.
 """
 
 import logging
 import time
-from dataclasses import dataclass
-from typing import Optional
 
 import numpy as np
 import mujoco
@@ -48,38 +45,61 @@ from src.config import (
     PREGRASP_GRIPPER_OPENING, GRASP_DESCEND_OFFSET, CLOSE_DESCEND_OFFSET,
     CLOSE_DESCEND_STEPS,
 )
-from src.env.chess_pick_place_env import ChessPickPlaceEnv
 from src.health_checks import CheckHook
 
 logger = logging.getLogger(__name__)
 
 
-@dataclass
 class OpResult:
-    """Outcome of a single pick-and-place operation."""
-    success: bool
-    steps_taken: int
-    final_error_mm: float
-    phases_completed: int
-    details: str = ""
+    """
+    Outcome of a single pick-and-place operation.
+
+    Attributes:
+        success: Whether the operation completed successfully.
+        steps_taken: Total number of simulation steps performed.
+        final_error_mm: Final Euclidean distance from goal in millimeters.
+        phases_completed: Number of stages successfully finished.
+        details: Human-readable string with execution metrics.
+    """
+
+    def __init__(self, success, steps_taken, final_error_mm, phases_completed, details=""):
+        """Initialize the operation result."""
+        self.success = success
+        self.steps_taken = steps_taken
+        self.final_error_mm = final_error_mm
+        self.phases_completed = phases_completed
+        self.details = details
 
 
-@dataclass
 class OpPreflight:
-    """Resolved positions and cheap validation results before arm motion."""
+    """
+    Resolved positions and validation results before arm motion.
 
-    actual_piece_pos: np.ndarray
-    src_pos: np.ndarray
-    dest_pos: np.ndarray
-    stage_targets: dict[str, Optional[np.ndarray]]
-    policy_issues: list[str]
-    failure_result: Optional[OpResult] = None
+    Attributes:
+        actual_piece_pos: Current XYZ position of the piece in world coordinates.
+        src_pos: Resolved source position for the pick.
+        dest_pos: Resolved destination position for the place.
+        stage_targets: Mapping of stage names to target XYZ coordinates.
+        policy_issues: List of warnings regarding workspace bounds.
+        failure_result: An OpResult if preflight checks failed, else None.
+    """
+
+    def __init__(self, actual_piece_pos, src_pos, dest_pos, stage_targets, policy_issues, failure_result=None):
+        """Initialize preflight data."""
+        self.actual_piece_pos = actual_piece_pos
+        self.src_pos = src_pos
+        self.dest_pos = dest_pos
+        self.stage_targets = stage_targets
+        self.policy_issues = policy_issues
+        self.failure_result = failure_result
 
 
 class ExecutionController:
     """
-    Executes PickPlaceOp operations using explicit stage-by-stage motion
-    and gripper commands.
+    Executes PickPlaceOp operations using explicit stage-by-stage motion.
+
+    This class coordinates the MuJoCo environment and the RL policy to move
+    pieces on the chess board.
     """
 
     STAGES = [
@@ -99,59 +119,73 @@ class ExecutionController:
     ]
     _source_descend_offset_z = 0.03
 
-    # Graveyard counters for grid positioning
+    # Workspace bounds
     _reach_min = np.array([REACHABLE_X_MIN, REACHABLE_Y_MIN, REACHABLE_Z_MIN], dtype=np.float64)
     _reach_max = np.array([REACHABLE_X_MAX, REACHABLE_Y_MAX, REACHABLE_Z_MAX], dtype=np.float64)
-    _policy_center = np.array(FETCH_INIT_GRIP, dtype=np.float64)
     _progress_log_interval = 10
 
-    def __init__(self, rl_model, env: ChessPickPlaceEnv):
+    def __init__(self, rl_model, env):
         """
+        Initialize the execution controller.
+
         Args:
-            rl_model: Pretrained SAC+HER model from stable-baselines3
-            env: ChessPickPlaceEnv wrapping the MuJoCo chess scene
+            rl_model: Pretrained reinforcement learning model.
+            env: ChessPickPlaceEnv instance.
         """
         self.rl_model = rl_model
         self.env = env
         self._white_graveyard_count = 0
         self._black_graveyard_count = 0
         self._policy_center = np.array(FETCH_INIT_GRIP, dtype=np.float64)
+
         if getattr(env, "home_grip_pos", None) is not None:
             self._policy_center = env.home_grip_pos.copy()
+
         self._pregrasp_piece_rest_z = Z_GRASP
         self._placement_goal = None
         self._stage_event_handler = None
 
-    def set_stage_event_handler(self, handler) -> None:
-        """Register a callback invoked at stage boundaries."""
+    def set_stage_event_handler(self, handler):
+        """
+        Register a callback invoked at stage boundaries.
+
+        Args:
+            handler: Callable taking (phase, **payload).
+        """
         self._stage_event_handler = handler
 
-    def _emit_stage_event(self, phase: CheckHook, **payload) -> None:
-        """Emit a stage lifecycle event to the registered callback."""
+    def _emit_stage_event(self, phase, **payload):
+        """
+        Emit a stage lifecycle event to the registered callback.
+
+        Args:
+            phase: The CheckHook phase.
+            payload: Additional event data.
+        """
         if self._stage_event_handler is not None:
             self._stage_event_handler(phase, **payload)
 
-    # ─── Position Computation ────────────────────────────────────────
+    # --- Position Computation ---
 
     @staticmethod
     def get_square_pos(square_name):
         """
-        Convert a chess square name (e.g. 'e4') to MuJoCo world coordinates.
+        Convert a chess square name to MuJoCo world coordinates.
+
+        Args:
+            square_name: String like 'e4'.
 
         Returns:
-            numpy array [x, y, z] at the piece center-of-mass height
+            numpy array [x, y, z] at the piece center-of-mass height.
         """
         file_idx = ord(square_name[0]) - ord('a')    # 0-7
         rank_idx = int(square_name[1:]) - 1           # 0-7
 
         start_x = BOARD_CENTER[0] - 4 * SQUARE_SIZE
-        # Rank 8 is placed on the robot-facing side so the AI-controlled
-        # black pieces start within the Fetch arm workspace.
+        # Rank 8 is placed on the robot-facing side.
         start_y = BOARD_CENTER[1] + 4 * SQUARE_SIZE
 
-        # File a maps to high-X (human's LEFT from White's perspective)
-        # and file h maps to low-X (human's RIGHT).  This follows the
-        # standard chess convention for board orientation.
+        # Board orientation mapping.
         x = start_x + (7 - file_idx + 0.5) * SQUARE_SIZE
         y = start_y - (rank_idx + 0.5) * SQUARE_SIZE
 
@@ -161,7 +195,11 @@ class ExecutionController:
         """
         Get world position for a square name or graveyard zone.
 
-        Graveyard positions use a grid layout to prevent stacking.
+        Args:
+            square_name: Square identifier or graveyard string.
+
+        Returns:
+            numpy array [x, y, z].
         """
         if square_name == "white_graveyard":
             return self._next_graveyard_pos("white")
@@ -170,7 +208,15 @@ class ExecutionController:
         return self.get_square_pos(square_name)
 
     def _next_graveyard_pos(self, color):
-        """Allocate the next grid position in a graveyard zone."""
+        """
+        Allocate the next grid position in a graveyard zone.
+
+        Args:
+            color: 'white' or 'black'.
+
+        Returns:
+            numpy array [x, y, z].
+        """
         if color == "white":
             idx = self._white_graveyard_count
             self._white_graveyard_count += 1
@@ -189,18 +235,18 @@ class ExecutionController:
         ])
         return origin + offset
 
-    # ─── Operation Execution ─────────────────────────────────────────
+    # --- Operation Execution ---
 
     def execute_op(self, op, viewer=None):
         """
-        Execute a single PickPlaceOp using the guided-policy strategy.
+        Execute a single pick-and-place operation.
 
         Args:
-            op: PickPlaceOp describing what piece to move and where
-            viewer: Optional MuJoCo viewer for visualization
+            op: Operation object with piece and target info.
+            viewer: Optional MuJoCo viewer.
 
         Returns:
-            OpResult with success/failure and metrics
+            OpResult instance.
         """
         preflight = self._preflight_op(op)
         actual_piece_pos = preflight.actual_piece_pos
@@ -221,49 +267,23 @@ class ExecutionController:
             f"src_square={op.target_square} "
             f"dest_square={op.dest_square}"
         )
-        logger.debug(
-            "  Arm Input | "
-            f"piece_current_xyz={actual_piece_pos.round(4)} | "
-            f"src_xyz={src_pos.round(4)} | "
-            f"dest_xyz={dest_pos.round(4)}"
-        )
-        logger.debug(
-            "  Arm Input | "
-            f"pre_hover_src_xyz={stage_targets['PREHOVER_SRC'].round(4)} | "
-            f"descend_src_xyz={stage_targets['DESCEND_SRC'].round(4)} | "
-            f"lift_verify_xyz={stage_targets['LIFT_VERIFY'].round(4)} | "
-            f"pre_hover_dest_xyz={stage_targets['PREHOVER_DEST'].round(4)} | "
-            f"descend_dest_xyz={stage_targets['DESCEND_DEST'].round(4)}"
-        )
-        logger.debug(
-            "  Arm Input | "
-            f"grip_current_xyz={self.env.get_grip_pos().round(4)} | "
-            f"reach_bounds_min={self._reach_min.round(4)} | "
-            f"reach_bounds_max={self._reach_max.round(4)}"
-        )
 
         self.env.set_target(op.piece_name, src_pos)
 
         total_steps = 0
         stages_completed = 0
         failed_stage = None
-
         pick_retry_count = 0
         stage_index = 0
+
         while stage_index < len(self.STAGES):
             stage = self.STAGES[stage_index]
             goal = self._resolve_stage_goal(stage, stage_targets, src_pos, dest_pos)
             self._emit_stage_event(CheckHook.ARM_STAGE_START, stage=stage, op=op, goal=goal, viewer=viewer)
-            logger.info(f"=== Starting Stage {stage} ===")
-            logger.debug(
-                "  Stage State | "
-                f"target_piece={op.piece_name} | "
-                f"piece_current_xyz={self.env.get_piece_pos().round(4)} | "
-                f"grip_current_xyz={self.env.get_grip_pos().round(4)} | "
-                f"goal_xyz={(goal.round(4) if goal is not None else 'n/a')}"
-            )
 
+            logger.info(f"=== Starting Stage {stage} ===")
             success, steps_taken = self._execute_stage(stage, op.piece_name, goal, viewer)
+
             self._emit_stage_event(
                 CheckHook.ARM_STAGE_END,
                 stage=stage,
@@ -277,21 +297,13 @@ class ExecutionController:
 
             if success:
                 stages_completed += 1
-                logger.debug(
-                    f"  Stage {stage} SUCCESS after {steps_taken} steps. "
-                    f"Grip={self.env.get_grip_pos().round(4)} | "
-                    f"Piece={self.env.get_piece_pos().round(4)}"
-                )
                 stage_index += 1
                 continue
 
+            # Retry logic for pick failures.
             if stage in {"CLOSE_GRIPPER_ONLY", "LIFT_VERIFY"} and pick_retry_count < 2:
                 pick_retry_count += 1
-                logger.warning(
-                    "  Pick acquisition failed; retrying from live piece pose | "
-                    f"attempt={pick_retry_count + 1} | "
-                    f"piece={self.env.get_piece_pos().round(4)}"
-                )
+                logger.warning(f"  Pick acquisition failed; retrying attempt={pick_retry_count + 1}")
                 self.env.force_gripper_open()
                 self._settle(viewer, steps=SETTLE_STEPS)
                 actual_piece_pos = self.env.data.body(op.piece_name).xpos.copy()
@@ -303,17 +315,12 @@ class ExecutionController:
                 continue
 
             failed_stage = stage
-            logger.warning(
-                f"  Stage {stage} FAILED after {steps_taken} steps. "
-                f"Grip={self.env.get_grip_pos().round(4)} | "
-                f"Piece={self.env.get_piece_pos().round(4)}"
-            )
             break
 
         if failed_stage is not None and failed_stage != "RETURN_HOME":
             self._retract_arm(viewer)
 
-        # ── Evaluate final placement ──
+        # Evaluate final placement.
         final_pos = self.env.data.body(op.piece_name).xpos.copy()
         final_xy_error = np.linalg.norm(final_pos[:2] - dest_pos[:2])
         final_z_error = abs(float(final_pos[2]) - float(dest_pos[2]))
@@ -326,11 +333,9 @@ class ExecutionController:
             and final_z_error < PLACEMENT_TOLERANCE
             and stability_issue is None
         )
+
         status = "SUCCESS" if success else "FAILED"
-        detail_suffix = (
-            f"xy_error={final_xy_error * 1000:.1f}mm, "
-            f"z_error={final_z_error * 1000:.1f}mm"
-        )
+        detail_suffix = f"xy_error={final_xy_error * 1000:.1f}mm, z_error={final_z_error * 1000:.1f}mm"
         if stability_issue is not None:
             detail_suffix += f", stability={stability_issue}"
 
@@ -339,20 +344,23 @@ class ExecutionController:
             steps_taken=total_steps,
             final_error_mm=final_error_mm,
             phases_completed=stages_completed,
-            details=f"{status}: {detail_suffix}, "
-                    f"stages={stages_completed}/{len(self.STAGES)}, "
-                    f"steps={total_steps}",
+            details=f"{status}: {detail_suffix}, stages={stages_completed}/{len(self.STAGES)}, steps={total_steps}",
         )
 
         logger.info(f"  Result: {result.details}")
         return result
 
-    def _preflight_op(self, op) -> OpPreflight:
-        """Resolve source/destination poses and validate cheap invariants."""
+    def _preflight_op(self, op):
+        """
+        Resolve source/destination poses and validate invariants.
+
+        Args:
+            op: Operation object.
+
+        Returns:
+            OpPreflight instance.
+        """
         actual_piece_pos = self.env.data.body(op.piece_name).xpos.copy()
-        # Pick up from the live MuJoCo pose, not the nominal square center.
-        # After earlier moves the piece can be a centimeter or two off-center,
-        # and targeting the stale square coordinate causes the gripper to miss.
         src_pos = actual_piece_pos.copy()
         if "graveyard" in op.target_square:
             src_pos = self.get_pos(op.target_square)
@@ -393,30 +401,48 @@ class ExecutionController:
         )
 
     def _resolve_stage_goal(self, stage, stage_targets, src_pos, dest_pos):
+        """
+        Determine the specific target coordinate for a stage.
+
+        Args:
+            stage: Stage name.
+            stage_targets: Precomputed targets.
+            src_pos: Source position.
+            dest_pos: Destination position.
+
+        Returns:
+            numpy array [x, y, z] or None.
+        """
         if stage == "PREHOVER_DEST":
             target_xy = dest_pos[:2] - self._current_carry_xy_offset()
             target_z = float(stage_targets["PREHOVER_DEST"][2])
             return np.array([target_xy[0], target_xy[1], target_z], dtype=np.float64)
+
         if stage == "DESCEND_SRC":
             piece_pos = self.env.get_piece_pos()
             return np.array(
                 [piece_pos[0], piece_pos[1], piece_pos[2] + self._source_descend_offset_z],
                 dtype=np.float64,
             )
+
         if stage == "DESCEND_DEST":
-            carry_offset = self._current_carry_offset()
+            # Bug Fix: Avoid double-compensation for piece height.
+            # dest_pos[2] is Z_GRASP (0.445m), which is the target gripper height 
+            # for a piece resting on the board. We descend to this height, 
+            # minus a small offset to ensure firm contact.
             return np.array(
                 [
-                    dest_pos[0] - carry_offset[0],
-                    dest_pos[1] - carry_offset[1],
-                    dest_pos[2] - carry_offset[2] + CLOSE_DESCEND_OFFSET,
+                    dest_pos[0],
+                    dest_pos[1],
+                    dest_pos[2] - CLOSE_DESCEND_OFFSET,
                 ],
                 dtype=np.float64,
             )
+
         return stage_targets.get(stage)
 
-    def _current_carry_xy_offset(self) -> np.ndarray:
-        """Estimate the live XY offset between the carried piece and the grip site."""
+    def _current_carry_xy_offset(self):
+        """Estimate the XY offset between the carried piece and the grip site."""
         if not hasattr(self.env, "get_grip_pos"):
             return np.zeros(2, dtype=np.float64)
         piece_pos = self.env.get_piece_pos()
@@ -425,8 +451,8 @@ class ExecutionController:
             return np.zeros(2, dtype=np.float64)
         return np.asarray(piece_pos[:2] - grip_pos[:2], dtype=np.float64)
 
-    def _current_carry_offset(self) -> np.ndarray:
-        """Estimate the live XYZ offset between the carried piece and grip site."""
+    def _current_carry_offset(self):
+        """Estimate the XYZ offset between the carried piece and grip site."""
         if not hasattr(self.env, "get_grip_pos"):
             return np.zeros(3, dtype=np.float64)
         piece_pos = self.env.get_piece_pos()
@@ -436,6 +462,16 @@ class ExecutionController:
         return np.asarray(piece_pos - grip_pos, dtype=np.float64)
 
     def _placement_stability_issue(self, piece_name, dest_pos):
+        """
+        Check if the piece is tipped or at an incorrect height.
+
+        Args:
+            piece_name: Name of the MuJoCo body.
+            dest_pos: Expected destination XYZ.
+
+        Returns:
+            String description of the issue or None.
+        """
         piece_body = self.env.data.body(piece_name)
         piece_pos = piece_body.xpos.copy()
         quat = piece_body.xquat.copy()
@@ -451,47 +487,71 @@ class ExecutionController:
 
     @classmethod
     def _is_reachable(cls, goal):
+        """Check if a coordinate is within reachable bounds."""
         goal = np.asarray(goal, dtype=np.float64)
         return np.all(goal >= cls._reach_min) and np.all(goal <= cls._reach_max)
 
     def _policy_compatibility_issues(self, src_pos, dest_pos):
+        """
+        Detect if positions are outside the trained RL policy workspace.
+
+        Args:
+            src_pos: Source XYZ.
+            dest_pos: Destination XYZ.
+
+        Returns:
+            List of issue strings.
+        """
         issues = []
         grip_pos = self._policy_center
 
-        def append_if_outside(name, pos):
-            xy_dist = np.linalg.norm(np.asarray(pos[:2]) - grip_pos[:2])
-            z = float(pos[2])
-            if xy_dist > POLICY_XY_RADIUS:
-                issues.append(
-                    f"{name}_xy_dist={xy_dist:.3f}m exceeds trained radius {POLICY_XY_RADIUS:.3f}m"
-                )
-            if not self._is_reachable(pos):
-                issues.append(
-                    f"{name}_xyz={np.asarray(pos).round(3)} outside workspace bounds"
-                )
-            if z < POLICY_Z_MIN or z > POLICY_Z_MAX:
-                issues.append(
-                    f"{name}_z={z:.3f}m outside trained z-range [{POLICY_Z_MIN:.3f}, {POLICY_Z_MAX:.3f}]"
-                )
+        # Check source and destination.
+        self._check_point_compatibility(issues, "src", src_pos, grip_pos)
+        self._check_point_compatibility(issues, "dest", dest_pos, grip_pos)
 
-        append_if_outside("src", src_pos)
-        append_if_outside("dest", dest_pos)
-        append_if_outside("acquire", np.array([src_pos[0], src_pos[1], Z_SAFE], dtype=np.float64))
-        append_if_outside("transit", np.array([dest_pos[0], dest_pos[1], Z_SAFE], dtype=np.float64))
+        # Check approach positions.
+        acquire_pos = np.array([src_pos[0], src_pos[1], Z_SAFE], dtype=np.float64)
+        self._check_point_compatibility(issues, "acquire", acquire_pos, grip_pos)
+
+        transit_pos = np.array([dest_pos[0], dest_pos[1], Z_SAFE], dtype=np.float64)
+        self._check_point_compatibility(issues, "transit", transit_pos, grip_pos)
+
         return issues
 
+    def _check_point_compatibility(self, issues, name, pos, grip_pos):
+        """Helper to check if a single point is within policy bounds."""
+        xy_dist = np.linalg.norm(np.asarray(pos[:2]) - grip_pos[:2])
+        z = float(pos[2])
+        if xy_dist > POLICY_XY_RADIUS:
+            issues.append(f"{name}_xy_dist={xy_dist:.3f}m exceeds trained radius {POLICY_XY_RADIUS:.3f}m")
+        if not self._is_reachable(pos):
+            issues.append(f"{name}_xyz={np.asarray(pos).round(3)} outside workspace bounds")
+        if z < POLICY_Z_MIN or z > POLICY_Z_MAX:
+            issues.append(f"{name}_z={z:.3f}m outside trained z-range [{POLICY_Z_MIN:.3f}, {POLICY_Z_MAX:.3f}]")
+
     def _build_stage_targets(self, src_pos, dest_pos, live_piece_pos=None):
+        """
+        Compute target coordinates for all stages.
+
+        Args:
+            src_pos: Source XYZ.
+            dest_pos: Destination XYZ.
+            live_piece_pos: Optional current piece position.
+
+        Returns:
+            Dict mapping stage names to XYZ arrays.
+        """
         piece_z = float(live_piece_pos[2]) if live_piece_pos is not None else Z_GRASP
         source_approach_z = piece_z + self._source_descend_offset_z
         dest_approach_z = piece_z + GRASP_DESCEND_OFFSET
         home_goal = np.array(FETCH_INIT_GRIP, dtype=np.float64)
+
         if self.env is not None and getattr(self.env, "home_grip_pos", None) is not None:
             home_goal = self.env.home_grip_pos
+
         clearance_z = self._release_clearance_z(dest_pos, home_goal)
-        
-        # Use Z_SAFE for all transit moves.
         transit_z = Z_SAFE
-            
+
         return {
             "HOME_RESET": None,
             "PREHOVER_SRC": np.array([src_pos[0], src_pos[1], transit_z], dtype=np.float64),
@@ -500,7 +560,7 @@ class ExecutionController:
             "CLOSE_GRIPPER_ONLY": None,
             "LIFT_VERIFY": np.array([src_pos[0], src_pos[1], transit_z], dtype=np.float64),
             "PREHOVER_DEST": np.array([dest_pos[0], dest_pos[1], transit_z], dtype=np.float64),
-            "DESCEND_DEST": np.array([dest_pos[0], dest_pos[1], dest_approach_z], dtype=np.float64),
+            "DESCEND_DEST": np.array([dest_pos[0], dest_pos[1], dest_pos[2] - CLOSE_DESCEND_OFFSET], dtype=np.float64),
             "OPEN_GRIPPER_ONLY": None,
             "POST_RELEASE_SETTLE": None,
             "POST_RELEASE_CLEARANCE": np.array([dest_pos[0], dest_pos[1], clearance_z], dtype=np.float64),
@@ -509,23 +569,20 @@ class ExecutionController:
         }
 
     def _execute_stage(self, stage, piece_name, goal, viewer=None):
+        """
+        Dispatch and execute a specific stage.
+
+        Args:
+            stage: Stage name.
+            piece_name: Target piece body name.
+            goal: Target coordinate.
+            viewer: Optional viewer.
+
+        Returns:
+            (success, steps_taken) tuple.
+        """
         if stage == "HOME_RESET":
-            self.env.force_gripper_open()
-            home_goal = self.env.home_grip_pos
-            current_grip = self.env.get_grip_pos()
-            steps_taken = 0
-            if np.linalg.norm(current_grip - home_goal) > 0.01:
-                retreat_z = self._release_clearance_z(current_grip, home_goal)
-                success, steps_taken = self._move_gripper_to(
-                    home_goal,
-                    viewer=viewer,
-                    gripper_opening=GRIPPER_OPEN,
-                    transit_z=retreat_z,
-                )
-                if not success:
-                    return False, steps_taken
-            self._settle(viewer, steps=SETTLE_STEPS)
-            return True, steps_taken
+            return self._handle_home_reset(viewer)
 
         if stage == "PREHOVER_SRC":
             self.env.set_target(piece_name, goal)
@@ -572,44 +629,7 @@ class ExecutionController:
             )
 
         if stage == "DESCEND_DEST":
-            self.env.set_target(piece_name, goal)
-            success, steps_taken = self._move_gripper_to(
-                goal,
-                viewer=viewer,
-                gripper_opening=GRIPPER_CLOSED,
-                require_piece_follow=True,
-                max_piece_drift=PIECE_DRIFT_TOLERANCE * 3,
-                max_cartesian_action=0.25,
-                rl_vertical_only=True,
-                use_rl=False,
-            )
-            piece_pos = self.env.get_piece_pos()
-            
-            if piece_pos[2] < TABLE_HEIGHT + 0.01:
-                return False, steps_taken
-                
-            xy_error = np.linalg.norm(piece_pos[:2] - self._placement_goal[:2])
-            z_error = abs(float(piece_pos[2]) - float(self._placement_goal[2]))
-            if xy_error <= PLACEMENT_TOLERANCE and z_error <= PLACEMENT_TOLERANCE:
-                return True, steps_taken
-            if abs(piece_pos[2] - self._placement_goal[2]) <= 0.03 and piece_pos[2] <= self._placement_goal[2] + 0.03:
-                align_goal = self.env.get_grip_pos().copy()
-                align_goal[:2] += self._placement_goal[:2] - piece_pos[:2]
-                align_success, align_steps = self._move_gripper_to(
-                    align_goal,
-                    viewer=viewer,
-                    gripper_opening=GRIPPER_CLOSED,
-                    require_piece_follow=False,
-                    transit_z=align_goal[2],
-                    max_cartesian_action=0.2,
-                    use_rl=False,
-                )
-                steps_taken += align_steps
-                piece_pos = self.env.get_piece_pos()
-                xy_error = np.linalg.norm(piece_pos[:2] - self._placement_goal[:2])
-                z_error = abs(float(piece_pos[2]) - float(self._placement_goal[2]))
-                return bool(align_success and xy_error <= PLACEMENT_TOLERANCE and z_error <= PLACEMENT_TOLERANCE), steps_taken
-            return success, steps_taken
+            return self._handle_descend_dest(piece_name, goal, viewer)
 
         if stage == "OPEN_GRIPPER_ONLY":
             success, steps_taken = self._actuate_gripper(close=False, viewer=viewer)
@@ -642,12 +662,73 @@ class ExecutionController:
 
         return False, 0
 
-    # ─── Arm Retraction ──────────────────────────────────────────────
+    def _handle_home_reset(self, viewer):
+        """Implementation for HOME_RESET stage."""
+        self.env.force_gripper_open()
+        home_goal = self.env.home_grip_pos
+        current_grip = self.env.get_grip_pos()
+        steps_taken = 0
+        if np.linalg.norm(current_grip - home_goal) > 0.01:
+            retreat_z = self._release_clearance_z(current_grip, home_goal)
+            success, steps_taken = self._move_gripper_to(
+                home_goal,
+                viewer=viewer,
+                gripper_opening=GRIPPER_OPEN,
+                transit_z=retreat_z,
+            )
+            if not success:
+                return False, steps_taken
+        self._settle(viewer, steps=SETTLE_STEPS)
+        return True, steps_taken
+
+    def _handle_descend_dest(self, piece_name, goal, viewer):
+        """Implementation for DESCEND_DEST stage."""
+        self.env.set_target(piece_name, goal)
+        success, steps_taken = self._move_gripper_to(
+            goal,
+            viewer=viewer,
+            gripper_opening=GRIPPER_CLOSED,
+            require_piece_follow=True,
+            max_piece_drift=PIECE_DRIFT_TOLERANCE * 3,
+            max_cartesian_action=0.25,
+            rl_vertical_only=True,
+            use_rl=False,
+        )
+        piece_pos = self.env.get_piece_pos()
+
+        if piece_pos[2] < TABLE_HEIGHT + 0.01:
+            return False, steps_taken
+
+        xy_error = np.linalg.norm(piece_pos[:2] - self._placement_goal[:2])
+        z_error = abs(float(piece_pos[2]) - float(self._placement_goal[2]))
+        if xy_error <= PLACEMENT_TOLERANCE and z_error <= PLACEMENT_TOLERANCE:
+            return True, steps_taken
+
+        # Correct for lateral drift during descent if near surface.
+        if abs(piece_pos[2] - self._placement_goal[2]) <= 0.03 and piece_pos[2] <= self._placement_goal[2] + 0.03:
+            align_goal = self.env.get_grip_pos().copy()
+            align_goal[:2] += self._placement_goal[:2] - piece_pos[:2]
+            align_success, align_steps = self._move_gripper_to(
+                align_goal,
+                viewer=viewer,
+                gripper_opening=GRIPPER_CLOSED,
+                require_piece_follow=False,
+                transit_z=align_goal[2],
+                max_cartesian_action=0.2,
+                use_rl=False,
+            )
+            steps_taken += align_steps
+            piece_pos = self.env.get_piece_pos()
+            xy_error = np.linalg.norm(piece_pos[:2] - self._placement_goal[:2])
+            z_error = abs(float(piece_pos[2]) - float(self._placement_goal[2]))
+            return bool(align_success and xy_error <= PLACEMENT_TOLERANCE and z_error <= PLACEMENT_TOLERANCE), steps_taken
+
+        return success, steps_taken
+
+    # --- Arm Retraction ---
 
     def _retract_arm(self, viewer=None):
-        """
-        Return the arm to the canonical home area after an aborted stage.
-        """
+        """Return the arm to the home area after an aborted stage."""
         self.env.force_gripper_open()
         home_goal = self.env.home_grip_pos
         retreat_z = self._release_clearance_z(self.env.get_grip_pos(), home_goal)
@@ -667,17 +748,11 @@ class ExecutionController:
         success = lift_success and return_success
         steps_taken = lift_steps + return_steps
         self._settle(viewer, steps=SETTLE_STEPS)
-        logger.debug(
-            "  Arm retreat home | "
-            f"success={success} | "
-            f"steps={steps_taken} | "
-            f"grip_xyz={self.env.get_grip_pos().round(4)} | "
-            f"home_xyz={home_goal.round(4)}"
-        )
         return success, steps_taken
 
     @staticmethod
     def _release_clearance_z(dest_pos, home_goal):
+        """Determine a safe height for arm retreat."""
         dest_z = float(dest_pos[2])
         home_z = float(home_goal[2])
         return min(
@@ -686,10 +761,7 @@ class ExecutionController:
         )
 
     def _settle_released_piece(self, goal_pos, viewer=None, max_steps=RELEASE_SETTLE_STEPS):
-        """
-        Hold the open gripper stationary until the released piece is back on
-        its support surface and no longer jittering from contact.
-        """
+        """Hold gripper stationary until the released piece settles."""
         goal_pos = np.asarray(goal_pos, dtype=np.float64)
         goal_z = float(goal_pos[2])
         target_body_name = getattr(self.env, "target_body_name", None)
@@ -724,20 +796,10 @@ class ExecutionController:
         ):
             return True, max_steps
 
-        logger.warning(
-            "    Released piece did not fully separate before retreat | "
-            f"piece={current_pos.round(4)} | "
-            f"grip={self.env.get_grip_pos().round(4)}"
-        )
         return False, max_steps
 
-    def _return_home_after_release(
-        self,
-        home_goal,
-        viewer=None,
-        released_piece_goal=None,
-    ):
-        """Lift clear of the released piece, then return laterally to home."""
+    def _return_home_after_release(self, home_goal, viewer=None, released_piece_goal=None):
+        """Lift clear of the released piece, then return to home."""
         home_goal = np.asarray(home_goal, dtype=np.float64)
         retreat_z = self._release_clearance_z(released_piece_goal, home_goal)
         lift_goal = np.array([self.env.get_grip_pos()[0], self.env.get_grip_pos()[1], retreat_z], dtype=np.float64)
@@ -773,11 +835,7 @@ class ExecutionController:
         rl_vertical_only=False,
         use_rl=False,
     ):
-        """
-        Script the gripper to a Cartesian target pose using small Fetch-style
-        deltas. Optionally keep the gripper closed and verify that the piece
-        follows the gripper during transport.
-        """
+        """Move gripper to a Cartesian target using small deltas."""
         target_pos = np.asarray(target_pos, dtype=np.float64)
         steps_taken = 0
         initial_piece_pos = self.env.get_piece_pos()
@@ -789,38 +847,23 @@ class ExecutionController:
         ]
 
         for waypoint in waypoints:
-            logger.debug(
-                "    Waypoint start | "
-                f"target={waypoint.round(4)} | "
-                f"grip={self.env.get_grip_pos().round(4)} | "
-                f"piece={self.env.get_piece_pos().round(4)} | "
-                f"gripper_opening={gripper_opening:.3f}"
-            )
             stall_steps = 0
             best_dist = float('inf')
-            
+
             for _ in range(RETRACT_STEPS * 3):
                 grip_pos = self.env.get_grip_pos()
                 delta = waypoint - grip_pos
                 dist = np.linalg.norm(delta)
                 if dist < 0.006:
-                    logger.debug(
-                        "    Waypoint reached | "
-                        f"target={waypoint.round(4)} | "
-                        f"grip={grip_pos.round(4)} | "
-                        f"piece={self.env.get_piece_pos().round(4)} | "
-                        f"steps_taken={steps_taken}"
-                    )
                     break
-                    
+
                 if dist < best_dist - 0.001:
                     best_dist = dist
                     stall_steps = 0
                 else:
                     stall_steps += 1
-                    
+
                 if stall_steps >= 50:
-                    logger.warning(f"    Stall detected: no progress towards waypoint for 50 steps (dist={dist:.4f}m)")
                     return False, steps_taken
 
                 action = self._compose_guided_action(
@@ -829,47 +872,17 @@ class ExecutionController:
                     rl_vertical_only=rl_vertical_only,
                     use_rl=use_rl,
                 )
-                self.env.step(
-                    action,
-                    viewer=viewer,
-                    debug=False,
-                    gripper_target=gripper_opening,
-                )
+                self.env.step(action, viewer=viewer, debug=False, gripper_target=gripper_opening)
                 steps_taken += 1
-
-                if steps_taken == 1 or steps_taken % self._progress_log_interval == 0:
-                    piece_pos = self.env.get_piece_pos()
-                    grip_pos = self.env.get_grip_pos()
-                    piece_to_grip = np.linalg.norm(piece_pos - grip_pos)
-                    piece_drift = np.linalg.norm(piece_pos[:2] - initial_piece_pos[:2])
-                    logger.debug(
-                        "    Waypoint progress | "
-                        f"target={waypoint.round(4)} | "
-                        f"grip={grip_pos.round(4)} | "
-                        f"piece={piece_pos.round(4)} | "
-                        f"remaining={np.linalg.norm(waypoint - grip_pos):.4f}m | "
-                        f"piece_to_grip={piece_to_grip:.4f}m | "
-                        f"piece_xy_drift={piece_drift:.4f}m | "
-                        f"action_xyz={action[:3].round(3)}"
-                    )
 
                 if max_piece_drift is not None:
                     piece_drift = np.linalg.norm(self.env.get_piece_pos()[:2] - initial_piece_pos[:2])
                     if piece_drift > max_piece_drift:
-                        logger.warning(
-                            "    Stage drift guard triggered: "
-                            f"piece_xy_drift={piece_drift:.4f}m > {max_piece_drift:.4f}m"
-                        )
                         return False, steps_taken
-                if released_piece_goal is not None:
-                    if not tolerate_released_piece_jitter:
-                        released_piece_issue = self._released_piece_issue(
-                            released_piece_goal,
-                            tolerate_contact_jitter=False,
-                        )
-                        if released_piece_issue is not None:
-                            logger.warning(f"    Released piece disturbed during retreat: {released_piece_issue}")
-                            return False, steps_taken
+
+                if released_piece_goal is not None and not tolerate_released_piece_jitter:
+                    if self._released_piece_issue(released_piece_goal, False) is not None:
+                        return False, steps_taken
 
         success = self._validate_motion_stage(
             target_pos,
@@ -880,6 +893,7 @@ class ExecutionController:
         return success, steps_taken
 
     def _actuate_gripper(self, close, viewer=None, stabilize_piece=False):
+        """Open or close the gripper."""
         if close:
             return self._close_gripper_with_descent(viewer=viewer, stabilize_piece=stabilize_piece)
         target = 0.0 if close else GRIPPER_OPEN
@@ -889,6 +903,7 @@ class ExecutionController:
         return success, GRIPPER_ACTUATION_STEPS
 
     def _close_gripper_with_descent(self, viewer=None, stabilize_piece=False):
+        """Close the gripper while descending to ensure a firm grasp."""
         grip_pos = self.env.get_grip_pos()
         piece_pos = self.env.get_piece_pos()
         align_z = max(float(grip_pos[2]), float(piece_pos[2]) + 0.05)
@@ -912,36 +927,14 @@ class ExecutionController:
 
             action = np.zeros(4, dtype=np.float64)
             action[2] = z_descent
-            self.env.step(
-                action,
-                viewer=viewer,
-                debug=False,
-                gripper_target=GRIPPER_CLOSED,
-            )
+            self.env.step(action, viewer=viewer, debug=False, gripper_target=GRIPPER_CLOSED)
             steps_taken += 1
 
             piece_pos = self.env.get_piece_pos()
             grip_pos = self.env.get_grip_pos()
             xy_dist = np.linalg.norm(piece_pos[:2] - grip_pos[:2])
             piece_to_grip = np.linalg.norm(piece_pos - grip_pos)
-            finger_qpos = self.env.get_gripper_finger_qpos()
-            if steps_taken == 1 or steps_taken % self._progress_log_interval == 0:
-                logger.debug(
-                    "    Close progress | "
-                    f"step={steps_taken}/{CLOSE_DESCEND_STEPS} | "
-                    f"piece={piece_pos.round(4)} | "
-                    f"grip={grip_pos.round(4)} | "
-                    f"xy_dist={xy_dist:.4f}m | "
-                    f"piece_to_grip={piece_to_grip:.4f}m | "
-                    f"finger_qpos={finger_qpos.round(5)}"
-                )
             if xy_dist < GRIP_CONTACT_TOLERANCE and piece_to_grip < desired_contact_gap:
-                logger.debug(
-                    "    Close precondition met | "
-                    f"step={steps_taken} | "
-                    f"xy_dist={xy_dist:.4f}m | "
-                    f"piece_to_grip={piece_to_grip:.4f}m"
-                )
                 break
 
         self._settle(viewer, steps=SETTLE_STEPS)
@@ -950,43 +943,25 @@ class ExecutionController:
         xy_dist = np.linalg.norm(piece_pos[:2] - grip_pos[:2])
         piece_to_grip = np.linalg.norm(piece_pos - grip_pos)
         finger_qpos = self.env.get_gripper_finger_qpos()
-        # The grip site sits noticeably above the piece COM even in a valid
-        # pinch pose, so vertical site-to-piece gap is not a reliable close
-        # criterion here. Use lateral alignment plus nearly-closed fingers,
-        # then let LIFT_VERIFY prove whether the piece is actually captured.
         fingers_closed = np.max(np.abs(finger_qpos)) < 0.002
         success = xy_dist < GRIP_CONTACT_TOLERANCE and piece_to_grip < desired_contact_gap and fingers_closed
-        logger.debug(
-            "    Close summary | "
-            f"grip={grip_pos.round(4)} | "
-            f"piece={piece_pos.round(4)} | "
-            f"xy_dist={xy_dist:.4f}m | "
-            f"piece_to_grip={piece_to_grip:.4f}m | "
-            f"finger_qpos={finger_qpos.round(5)} | "
-            f"fingers_closed={fingers_closed} | "
-            f"success={success}"
-        )
         return success, steps_taken
 
     def _set_gripper_aperture(self, target_opening, viewer=None):
+        """Set the gripper width."""
         self.env.set_gripper_target(target_opening)
         settle_steps = GRIPPER_ACTUATION_STEPS
         if target_opening >= GRIPPER_OPEN - 1e-6:
             settle_steps = max(GRIPPER_ACTUATION_STEPS, RELEASE_SETTLE_STEPS * 3)
         self._settle(viewer, steps=settle_steps)
-        logger.debug(
-            "    Gripper aperture set | "
-            f"target={target_opening:.4f} | "
-            f"actual_qpos={self.env.get_gripper_finger_qpos().round(5)}"
-        )
         return True, settle_steps
 
     def _gripper_is_open(self):
-        """Return whether both finger joints are near the configured open pose."""
+        """Return whether finger joints are near the open pose."""
         return bool(np.min(self.env.get_gripper_finger_qpos()) >= GRIPPER_OPEN - RELEASE_GRIPPER_OPEN_TOLERANCE)
 
     def _released_piece_issue(self, goal_pos, tolerate_contact_jitter=False):
-        """Detect whether the released piece is being disturbed during retreat."""
+        """Detect if the released piece is disturbed."""
         goal_pos = np.asarray(goal_pos, dtype=np.float64)
         piece_pos = self.env.get_piece_pos()
         xy_error = np.linalg.norm(piece_pos[:2] - goal_pos[:2])
@@ -1004,9 +979,8 @@ class ExecutionController:
         return None
 
     def _finalize_placement(self, goal_pos, viewer=None, max_steps=FINAL_SETTLE_STEPS):
-        """Let gravity complete the placement after the gripper has cleared."""
+        """Wait for gravity to complete the placement."""
         goal_pos = np.asarray(goal_pos, dtype=np.float64)
-        steps_taken = 0
         for steps_taken in range(1, max_steps + 1):
             mujoco.mj_step(self.env.model, self.env.data)
             self._sync_viewer(viewer)
@@ -1022,42 +996,20 @@ class ExecutionController:
                 and stability_issue is None
             ):
                 return True, steps_taken
+
         piece_pos = self.env.get_piece_pos()
         xy_error = np.linalg.norm(piece_pos[:2] - goal_pos[:2])
         z_error = abs(float(piece_pos[2]) - float(goal_pos[2]))
-        piece_speed = np.linalg.norm(self.env.get_piece_linear_velocity())
         stability_issue = self._placement_stability_issue(self.env.target_body_name, goal_pos)
         success = (
             xy_error <= PLACEMENT_TOLERANCE
             and z_error <= PLACEMENT_TOLERANCE
             and stability_issue is None
         )
-        if not success:
-            logger.warning(
-                "    Final placement settle incomplete | "
-                f"piece={piece_pos.round(4)} | "
-                f"goal={goal_pos.round(4)} | "
-                f"xy_error={xy_error * 1000:.1f}mm | "
-                f"z_error={z_error * 1000:.1f}mm | "
-                f"piece_speed={piece_speed:.4f}m/s | "
-                f"stability_issue={stability_issue or 'none'}"
-            )
-        return success, steps_taken
+        return success, max_steps
 
-    def _compose_guided_action(
-        self,
-        delta,
-        max_cartesian_action=1.0,
-        rl_vertical_only=False,
-        use_rl=False,
-    ):
-        """
-        Blend waypoint guidance with deterministic RL inference.
-
-        The scripted term guarantees progress toward the stage target. The RL
-        term is only mixed in when a policy is available and its proposal is
-        aligned with the current waypoint direction.
-        """
+    def _compose_guided_action(self, delta, max_cartesian_action=1.0, rl_vertical_only=False, use_rl=False):
+        """Blend waypoint guidance with RL policy inference."""
         delta = np.asarray(delta, dtype=np.float64)
         scripted = np.zeros(4, dtype=np.float64)
         scripted[:3] = np.clip(delta / ACTION_SCALE, -max_cartesian_action, max_cartesian_action)
@@ -1080,11 +1032,7 @@ class ExecutionController:
             return scripted
 
         blended = scripted.copy()
-        blended[:3] = np.clip(
-            0.7 * scripted[:3] + 0.3 * rl_action[:3],
-            -max_cartesian_action,
-            max_cartesian_action,
-        )
+        blended[:3] = np.clip(0.7 * scripted[:3] + 0.3 * rl_action[:3], -max_cartesian_action, max_cartesian_action)
         if rl_vertical_only:
             blended[:2] = scripted[:2]
         blended[3] = 0.0
@@ -1092,7 +1040,7 @@ class ExecutionController:
 
     @staticmethod
     def _sync_viewer(viewer=None):
-        """Sync the viewer if present, otherwise behave as a no-op."""
+        """Sync the viewer if present."""
         if viewer is None:
             return
         viewer.sync()
@@ -1100,24 +1048,18 @@ class ExecutionController:
             time.sleep(VIEWER_STEP_DELAY_SEC)
 
     def _validate_motion_stage(self, target_pos, require_piece_follow, initial_piece_pos=None, max_piece_drift=None):
+        """Validate if the gripper reached its target and piece is in sync."""
         grip_pos = self.env.get_grip_pos()
         piece_pos = self.env.get_piece_pos()
         grip_ok = np.linalg.norm(grip_pos - target_pos) < 0.02
         drift_ok = True
         piece_drift = None
+
         if initial_piece_pos is not None and max_piece_drift is not None:
             piece_drift = np.linalg.norm(piece_pos[:2] - initial_piece_pos[:2])
             drift_ok = piece_drift <= max_piece_drift
+
         if not require_piece_follow:
-            logger.debug(
-                "    Stage validation | "
-                f"target={target_pos.round(4)} | "
-                f"grip={grip_pos.round(4)} | "
-                f"piece={piece_pos.round(4)} | "
-                f"grip_ok={grip_ok} | "
-                f"drift_ok={drift_ok} | "
-                f"piece_xy_drift={(piece_drift if piece_drift is not None else 'N/A')}"
-            )
             return grip_ok and drift_ok
 
         piece_xy_to_grip = np.linalg.norm(piece_pos[:2] - grip_pos[:2])
@@ -1136,23 +1078,10 @@ class ExecutionController:
             and piece_z_to_grip < 0.10
             and (piece_lifted or piece_supported_at_goal)
         )
-        logger.debug(
-            "    Stage validation | "
-            f"target={target_pos.round(4)} | "
-            f"grip={grip_pos.round(4)} | "
-            f"piece={piece_pos.round(4)} | "
-            f"grip_ok={grip_ok} | "
-            f"drift_ok={drift_ok} | "
-            f"piece_xy_to_grip={piece_xy_to_grip:.4f}m | "
-            f"piece_z_to_grip={piece_z_to_grip:.4f}m | "
-            f"piece_lifted={piece_lifted} | "
-            f"piece_supported_at_goal={piece_supported_at_goal} | "
-            f"piece_xy_drift={(piece_drift if piece_drift is not None else 'N/A')} | "
-            f"success={success}"
-        )
         return success
 
     def _settle(self, viewer=None, steps=SETTLE_STEPS):
+        """Step simulation without actions to allow physics to settle."""
         for _ in range(steps):
             mujoco.mj_step(self.env.model, self.env.data)
             if viewer:

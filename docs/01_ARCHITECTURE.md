@@ -1,0 +1,59 @@
+# 01 ARCHITECTURE: System Structure and Interactions
+
+RoboChess follows a modular, layered architecture designed to separate high-level game logic from low-level physical control. This separation is crucial for debugging complex robotic interactions.
+
+## 🏗️ Architectural Layers
+
+### 1. Game Logic Layer (`src/logic/`)
+- **`ChessGameManager`**: Powered by `python-chess`. It maintains the logical board state (FEN), validates legal moves, and interfaces with the **Stockfish** engine for AI decision-making.
+- **`OperationPlanner`**: Translates a single chess move (e.g., "e2 to e4") into a list of physical **Operations** (`PickPlaceOp`). For example, a capture move involves two operations: moving the victim to the graveyard, then moving the attacker to the destination square.
+
+### 2. Physical Orchestration Layer (`src/game_runtime.py`, `src/bootstrap.py`)
+- **`SystemBootstrapper`**: The entry point for the simulation. It loads the MuJoCo XML scene, initializes the robot's "home" pose, and downloads the pretrained RL model.
+- **`GameOrchestrator`**: The "conductor." It receives operations from the planner and dispatches them to the robot controller. It also handles **teleportation** logic for human moves or for pieces that are outside the robot's physical reach.
+
+### 3. Robotic Control Layer (`src/control/`)
+- **`ExecutionController`**: This is the heart of the robotic movement. It implements a **staged state machine** (13 stages total) to move the arm safely. It handles coordinate math (Cartesian to joint space) and manages the transition between scripted movements and RL-guided movements.
+
+### 4. Physics Environment Layer (`src/env/`, `src/assets/`)
+- **`ChessPickPlaceEnv`**: A customized Gymnasium-style environment. It exposes the MuJoCo state (joint angles, piece positions) to the rest of the system.
+- **`ObservationReconstructor`**: Specialized logic that takes raw MuJoCo data and transforms it into the 26-dimensional vector expected by the RL policy.
+
+## 🔄 Interaction Flow (The Lifecycle of a Move)
+
+The following sequence diagram shows how the components interact when an AI move is triggered:
+
+```mermaid
+sequenceDiagram
+    participant UI as RoboChessApp
+    participant GL as GameLoop
+    participant GM as ChessGameManager
+    participant PL as OperationPlanner
+    participant OR as GameOrchestrator
+    participant EC as ExecutionController
+    participant MJ as MuJoCo Engine
+
+    UI->>GL: execute_ai_turn()
+    GL->>GM: get_ai_move() (Stockfish)
+    GM-->>GL: move (e.g., e7e5)
+    GL->>PL: generate_operations(move)
+    PL-->>GL: [PickPlaceOp(e7, e5)]
+    GL->>OR: execute_ops(ops)
+    OR->>EC: execute_op(op)
+    
+    loop 13 Stages (Pick, Move, Place)
+        EC->>MJ: mj_step() (Apply Forces)
+        MJ-->>EC: Update Physics
+        EC->>EC: Run Health Checks
+    end
+    
+    EC-->>OR: OpResult (Success)
+    OR-->>GL: Done
+    GL->>GM: push_move(e7e5)
+    GL-->>UI: Update GUI
+```
+
+## 🛡️ Stability and Error Handling
+Because MuJoCo is a rigid-body simulator, tiny errors can accumulate.
+- **Runtime Checks**: At the end of every turn, the `RuntimeGuard` verifies that the physical position of every piece matches the logical board.
+- **Freeze on Exception**: If a piece falls over or the robot fails a grasp, the simulation "freezes" (stops stepping physics but keeps the viewer open) so the developer can inspect the failure.

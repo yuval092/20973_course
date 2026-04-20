@@ -10,7 +10,7 @@ goal_tolerance: 0.05 # Distance threshold used to determine if a waypoint or tar
 placement_tolerance: 0.025 # Maximum allowed vertical deviation from the target when releasing a piece.
 max_steps_per_phase: 250 # Safety timeout for the maximum steps allowed for any single movement stage.
 fetch_policy_horizon: 50 # Maximum number of steps the RL policy is permitted to run for a sub-task.
-settle_steps: 15 # Number of steps to wait for physics to stabilize after an action completes.
+settle_steps: 50 # Number of steps to wait for physics to stabilize after an action completes.
 retract_steps: 25 # Number of steps dedicated to moving the arm away after a piece is released.
 gripper_actuation_steps: 12 # Duration in simulation steps for the gripper to fully open or close.
 grip_contact_tolerance: 0.025 # Distance threshold between fingers and piece to confirm a successful grasp.

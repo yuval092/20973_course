@@ -1,3 +1,11 @@
+"""
+Custom exception classes for the RoboChess runtime.
+
+This module defines a hierarchy of exceptions used to signal various
+operational and validation failures throughout the application.
+"""
+
+
 class RoboChessError(Exception):
     """Base class for all RoboChess errors."""
     pass
@@ -60,4 +68,9 @@ class NumericalStabilityError(RuntimeCheckError):
 
 class SceneIntegrityError(RuntimeCheckError):
     """Raised when the MuJoCo scene is missing required robot or piece assets."""
+    pass
+
+
+class PolicyWorkspaceError(RoboChessError):
+    """Raised when a target coordinate is outside the trained RL policy area."""
     pass
