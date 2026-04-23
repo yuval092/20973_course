@@ -7,3 +7,4 @@ docs/superpowers/plans/
 docs/superpowers/specs/
 models/
 stockfish/
+.venv/
