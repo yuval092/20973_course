@@ -57,8 +57,7 @@ graveyard_platform_height: 0.024 # The total thickness of the graveyard platform
 stockfish_paths: [/usr/games/stockfish, /usr/local/bin/stockfish, stockfish] # List of filesystem paths to search for the Stockfish executable.
 stockfish_time_limit: 0.1 # Time in seconds the AI is allowed to think before returning a move.
 
-hf_repo_id: sb3/tqc-FetchPickAndPlace-v1 # The repository ID containing the pretrained TQC RL policy.
-hf_filename: tqc-FetchPickAndPlace-v1.zip # The specific ZIP file name of the model weights in the repository.
+local_model_path: "sac-FetchPickAndPlace-v4.zip" # The specific ZIP file name of the model weights in the repository.
 
 tilt_threshold_cos: 0.966 # Cosine of the maximum tilt angle allowed before a piece is considered "fallen."
 displacement_threshold: 0.4 # Maximum horizontal distance a piece can drift from its square center.
