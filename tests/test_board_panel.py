@@ -29,7 +29,7 @@ class TestBoardPanel:
         )
 
         panel = BoardPanel(root, loop)
-        assert panel.auto_play.get() is False
+        assert panel.auto_play_var.get() is False
         assert len(panel.squares) == 64
 
         root.destroy()

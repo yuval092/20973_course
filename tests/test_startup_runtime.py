@@ -73,18 +73,18 @@ class TestStartupRuntime:
         with pytest.raises(SceneLoadError, match="Scene not found"):
             SystemBootstrapper.load_scene("/tmp/definitely_missing_scene.xml")
 
-    def test_load_rl_policy_wraps_hub_failure(self, monkeypatch):
+    def test_load_rl_policy_wraps_local_failure(self, monkeypatch):
         """
-        Verify that load_rl_policy wraps downstream hub errors.
+        Verify that load_rl_policy wraps downstream disk errors.
         """
         env = MagicMock()
-        # Mock load_from_hub to raise an error
-        def mock_hub_fail(*args, **kwargs):
-            raise RuntimeError("hub down")
-        monkeypatch.setattr(bootstrap_module, "load_from_hub", mock_hub_fail)
+        # Mock SAC.load to raise an error
+        def mock_sac_fail(*args, **kwargs):
+            raise RuntimeError("disk error")
+        monkeypatch.setattr(bootstrap_module.SAC, "load", mock_sac_fail)
 
-        with pytest.raises(RLModelError, match="hub down"):
-            SystemBootstrapper.load_rl_policy(env, repo_id="fake/repo", filename="fake.zip")
+        with pytest.raises(RLModelError, match="disk error"):
+            SystemBootstrapper.load_rl_policy(env, model_path="fake.zip")
 
     def test_validate_initial_mapping_rejects_wrong_piece_count(self):
         """
@@ -100,7 +100,7 @@ class TestStartupRuntime:
         fake_policy = object()
         monkeypatch.setattr(
             SystemBootstrapper, "load_rl_policy", 
-            lambda env, repo_id, filename: fake_policy
+            lambda *args, **kwargs: fake_policy
         )
 
         systems = SystemBootstrapper.bootstrap_game_systems()
@@ -116,7 +116,7 @@ class TestStartupRuntime:
         """
         Verify that bootstrap_game_systems propagates RL model load errors.
         """
-        def mock_load_fail(env, repo_id, filename):
+        def mock_load_fail(*args, **kwargs):
             raise RLModelError("bad model")
         monkeypatch.setattr(SystemBootstrapper, "load_rl_policy", mock_load_fail)
 

@@ -90,8 +90,10 @@ class TestExecutionController:
         Verify that squares too far from the robot are flagged.
         """
         controller = ExecutionController(None, None)
+        # Point reachable but far away from FETCH_INIT_GRIP [1.3419, 0.7491, 0.575]
+        # [0.9, 1.18] is ~0.61m away, exceeding 0.5m radius
         issues = controller._policy_compatibility_issues(
-            np.array([1.305, 0.575, Z_GRASP]),
+            np.array([0.9, 1.18, Z_GRASP]),
             np.array([1.255, 0.675, Z_GRASP]),
         )
         assert any("src_xy_dist" in issue for issue in issues)
@@ -101,6 +103,7 @@ class TestExecutionController:
         Verify that mid-board moves are within the policy workspace.
         """
         controller = ExecutionController(None, None)
+        # Mid-board point near FETCH_INIT_GRIP
         issues = controller._policy_compatibility_issues(
             np.array([1.255, 0.675, 0.421]),
             np.array([1.205, 0.775, 0.421]),
@@ -116,7 +119,9 @@ class TestExecutionController:
             target_square = "g8"
             dest_square = "f6"
 
-        body = self.DummyBody(np.array([1.305, 0.575, Z_GRASP]))
+        # Point reachable but far away from DummyEnv's home [1.25, 0.75, 0.55]
+        # [0.9, 1.18] is ~0.55m away, exceeding 0.5m radius
+        body = self.DummyBody(np.array([0.9, 1.18, Z_GRASP]))
         env = self.DummyEnv(body)
         controller = ExecutionController(None, env)
         preflight = controller._preflight_op(DummyOp())

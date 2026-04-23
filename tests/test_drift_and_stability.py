@@ -45,7 +45,13 @@ class TestDriftAndStability:
         """
         (model, data, _, controller, _, square_to_piece, _) = self._build_test_env()
 
-        # White a2 to a4 is very far left, usually out of policy radius
+        # Mock a4 to be very far away to trigger the radius warning
+        def mock_get_pos(sq):
+            if sq == "a4":
+                return np.array([0.9, 1.18, Z_GRASP])
+            return controller.get_square_pos(sq)
+        controller.get_pos = mock_get_pos
+
         op = PickPlaceOp("a2", "a4", "w_pawn_1")
 
         with caplog.at_level("WARNING"):

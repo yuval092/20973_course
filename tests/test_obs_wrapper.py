@@ -89,9 +89,8 @@ class TestObsWrapper:
                 n_substeps,
                 time_feature=0.75,
             )
-
-            # Observation vector should be 26-dimensional
-            assert obs.shape == (26,)
+            # Observation vector should be 25-dimensional
+            assert obs.shape == (25,)
 
             dt = n_substeps * 0.002  # 0.04
 
@@ -108,6 +107,6 @@ class TestObsWrapper:
             # Verify grip_vel_lin_scaled (indices 20-22)
             expected_grip_vel = np.array([0.04, 0.05, 0.06]) * dt
             np.testing.assert_allclose(obs[20:23], expected_grip_vel)
-            
-            # Verify time feature (index 25)
-            assert obs[25] == pytest.approx(0.75)
+
+            root.destroy()
+

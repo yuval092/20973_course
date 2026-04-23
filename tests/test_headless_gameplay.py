@@ -159,11 +159,15 @@ class TestHeadlessGameplay:
         """
         game = self._build_game(manager)
         # Setup board for a move in the sweet spot (f6 to f5)
-        game["manager"].board.set_fen("rnbqkbnr/ppppp1pp/5p2/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
+        game["manager"].board.set_fen("rnbqkbnr/ppppp1pp/5p2/8/8/8/PPPPPPPP/RNBQKBNR b KQkq - 0 1")
         game["square_to_piece"].pop("f7")
         game["square_to_piece"]["f6"] = "b_pawn_6"
+        
+        # Teleport piece to f6
+        GameOrchestrator.teleport_piece(game["model"], game["data"], "b_pawn_6", game["controller"].get_square_pos("f6"))
+        mujoco.mj_forward(game["model"], game["data"])
 
-        with caplog.at_level("INFO", logger="robo_chess"):
+        with caplog.at_level("INFO"):
             self._play_turn(game, "f6f5", physical_black=True)
 
         assert any("Result: SUCCESS" in rec.message for rec in caplog.records)
@@ -311,16 +315,6 @@ class TestHeadlessValidation:
         Verify that moving a piece manually triggers a validation error.
         """
         game = self._build_game(manager)
-        # Use f4 which is within policy workspace
-        game["manager"].board.set_fen("rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1")
-        game["square_to_piece"].clear()
-        # Minimal mapping for validation test
-        for sq in ["a1", "a2", "a7", "a8", "e4", "h1", "h8"]:
-             game["square_to_piece"][sq] = "dummy"
-        
-        game["square_to_piece"]["e4"] = "w_pawn_5"
-        game["square_to_piece"]["h1"] = "w_king"
-        game["square_to_piece"]["a1"] = "b_king"
         
         # Reset board to match mapping
         game["manager"].board.set_fen("k7/8/8/8/4P3/8/8/7K w - - 0 1")
@@ -329,6 +323,12 @@ class TestHeadlessValidation:
             "e4": "w_pawn_5",
             "h1": "w_king"
         }
+        
+        # Teleport pieces to match the board state
+        GameOrchestrator.teleport_piece(game["model"], game["data"], "b_king", game["controller"].get_square_pos("a8"))
+        GameOrchestrator.teleport_piece(game["model"], game["data"], "w_pawn_5", game["controller"].get_square_pos("e4"))
+        GameOrchestrator.teleport_piece(game["model"], game["data"], "w_king", game["controller"].get_square_pos("h1"))
+        mujoco.mj_forward(game["model"], game["data"])
 
         # Nudge piece
         joint_id = game["model"].body("w_pawn_5").jntadr[0]
@@ -352,6 +352,12 @@ class TestHeadlessValidation:
             "e4": "w_pawn_5",
             "h1": "w_king"
         }
+        
+        # Teleport pieces to match the board state
+        GameOrchestrator.teleport_piece(game["model"], game["data"], "b_king", game["controller"].get_square_pos("a8"))
+        GameOrchestrator.teleport_piece(game["model"], game["data"], "w_pawn_5", game["controller"].get_square_pos("e4"))
+        GameOrchestrator.teleport_piece(game["model"], game["data"], "w_king", game["controller"].get_square_pos("h1"))
+        mujoco.mj_forward(game["model"], game["data"])
 
         self._set_piece_tilt(game, "w_pawn_5", np.array([0.923, 0.382, 0.0, 0.0]))
 
