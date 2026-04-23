@@ -7,8 +7,52 @@ initializing the core game systems.
 
 import logging
 import os
+import sys
 import chess
 import mujoco
+import numpy as np
+
+# NumPy 2.x to 1.x compatibility shim
+# This handles models saved with NumPy 2.x but loaded with NumPy 1.x
+# Must be before any imports that might use numpy (like stable_baselines3)
+if not hasattr(np, '_core'):
+    try:
+        import numpy.core as core
+        sys.modules['numpy._core'] = core
+        import numpy.core.multiarray as multiarray
+        sys.modules['numpy._core.multiarray'] = multiarray
+        import numpy.core.umath as umath
+        sys.modules['numpy._core.umath'] = umath
+        import numpy.core.numeric as numeric
+        sys.modules['numpy._core.numeric'] = numeric
+        import numpy.core.defchararray as defchararray
+        sys.modules['numpy._core.defchararray'] = defchararray
+        import numpy.core.records as records
+        sys.modules['numpy._core.records'] = records
+        import numpy.core.memmap as memmap
+        sys.modules['numpy._core.memmap'] = memmap
+        import numpy.core.function_base as function_base
+        sys.modules['numpy._core.function_base'] = function_base
+        import numpy.core.fromnumeric as fromnumeric
+        sys.modules['numpy._core.fromnumeric'] = fromnumeric
+        import numpy.core._multiarray_umath as _multiarray_umath
+        sys.modules['numpy._core._multiarray_umath'] = _multiarray_umath
+    except ImportError:
+        pass
+
+# Patch NumPy random BitGenerator constructor for NumPy 2.x compatibility
+try:
+    import numpy.random._pickle as npr_pickle
+    old_ctor = npr_pickle.__bit_generator_ctor
+    def new_ctor(bit_generator_name):
+        if not isinstance(bit_generator_name, str):
+            if hasattr(bit_generator_name, '__name__'):
+                bit_generator_name = bit_generator_name.__name__
+        return old_ctor(bit_generator_name)
+    npr_pickle.__bit_generator_ctor = new_ctor
+except (ImportError, AttributeError):
+    pass
+
 from stable_baselines3 import SAC
 from stable_baselines3.common.buffers import DictReplayBuffer
 
@@ -82,7 +126,14 @@ class SystemBootstrapper:
                 model_path = alt_path
 
         try:
-            rl_model = SAC.load(model_path, env=env)
+            rl_model = SAC.load(
+                model_path,
+                env=env,
+                custom_objects={
+                    "observation_space": env.observation_space,
+                    "action_space": env.action_space,
+                },
+            )
             logger.info("SAC model loaded successfully from %s", model_path)
             return rl_model
         except Exception as exc:

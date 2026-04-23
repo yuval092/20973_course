@@ -66,7 +66,6 @@ class ObservationReconstructor:
             obj_velr,
             grip_velp,
             gripper_vel,
-            [float(np.clip(time_feature, 0.0, 1.0))],
         ]).astype(np.float32)
 
         return obs

@@ -103,10 +103,8 @@ class ChessPickPlaceEnv(gym.Env):
         ], dtype=np.float64)
 
         # Define Gym spaces.
-        low = np.full(26, -np.inf, dtype=np.float32)
-        low[-1] = 0.0
-        high = np.full(26, np.inf, dtype=np.float32)
-        high[-1] = 1.0
+        low = np.full(25, -np.inf, dtype=np.float32)
+        high = np.full(25, np.inf, dtype=np.float32)
 
         self.observation_space = spaces.Dict({
             'observation': spaces.Box(low, high, dtype=np.float32),
