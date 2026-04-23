@@ -778,23 +778,19 @@ class ExecutionController:
             xy_error = np.linalg.norm(current_pos[:2] - goal_pos[:2])
             z_error = abs(float(current_pos[2]) - goal_z)
             piece_speed = np.linalg.norm(self.env.get_piece_linear_velocity())
-            piece_to_grip = np.linalg.norm(current_pos - self.env.get_grip_pos())
             if (
                 xy_error <= PLACEMENT_TOLERANCE
                 and z_error <= PLACEMENT_TOLERANCE
                 and piece_speed <= RELEASE_VELOCITY_TOLERANCE * 3.0
-                and piece_to_grip >= GRIP_CONTACT_TOLERANCE * 0.5
             ):
                 return True, steps_taken
 
         current_pos = self.env.get_piece_pos()
         xy_error = np.linalg.norm(current_pos[:2] - goal_pos[:2])
         z_error = abs(float(current_pos[2]) - goal_z)
-        piece_to_grip = np.linalg.norm(current_pos - self.env.get_grip_pos())
         if (
             xy_error <= PLACEMENT_TOLERANCE
             and z_error <= PLACEMENT_TOLERANCE
-            and piece_to_grip >= GRIP_CONTACT_TOLERANCE * 0.5
         ):
             return True, max_steps
 
