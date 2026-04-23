@@ -110,7 +110,12 @@ class ConfigManager:
             "graveyard_platform_height": (int, float),
             "stockfish_paths": list,
             "stockfish_time_limit": (int, float),
+            "hf_repo_id": str,
+            "hf_filename": str,
             "local_model_path": str,
+            "robot_slide_x": (int, float),
+            "robot_slide_y": (int, float),
+            "robot_slide_z": (int, float),
             "tilt_threshold_cos": (int, float),
             "displacement_threshold": (int, float),
         }
@@ -206,7 +211,12 @@ GRAVEYARD_PLATFORM_HALF_EXTENTS = _MANAGER.get("graveyard_platform_half_extents"
 GRAVEYARD_PLATFORM_HEIGHT = _MANAGER.get("graveyard_platform_height")
 STOCKFISH_PATHS = _MANAGER.get("stockfish_paths")
 STOCKFISH_TIME_LIMIT = _MANAGER.get("stockfish_time_limit")
+HF_REPO_ID = _MANAGER.get("hf_repo_id")
+HF_FILENAME = _MANAGER.get("hf_filename")
 LOCAL_MODEL_PATH = _MANAGER.get("local_model_path")
+ROBOT_SLIDE_X = _MANAGER.get("robot_slide_x")
+ROBOT_SLIDE_Y = _MANAGER.get("robot_slide_y")
+ROBOT_SLIDE_Z = _MANAGER.get("robot_slide_z")
 TILT_THRESHOLD_COS = _MANAGER.get("tilt_threshold_cos")
 DISPLACEMENT_THRESHOLD = _MANAGER.get("displacement_threshold")
 # Missing PIECE_HIDE_Z which is used in turn_executor.py but not in schema

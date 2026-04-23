@@ -22,6 +22,7 @@ from src.config import (
     BOARD_CENTER, SQUARE_SIZE, WORKSPACE_XY_MARGIN,
     WORKSPACE_Z_MIN, WORKSPACE_Z_MAX, VIEWER_STEP_DELAY_SEC,
     FETCH_INIT_GRIP, FETCH_POLICY_HORIZON,
+    ROBOT_SLIDE_X, ROBOT_SLIDE_Y, ROBOT_SLIDE_Z,
 )
 from src.env.obs_wrapper import ObservationReconstructor
 
@@ -176,9 +177,9 @@ class ChessPickPlaceEnv(gym.Env):
 
         # Initialize specific Fetch joints if no home state exists.
         for joint_name, value in (
-            ("robot0:slide0", 0.405),
-            ("robot0:slide1", 0.48),
-            ("robot0:slide2", 0.0),
+            ("robot0:slide0", ROBOT_SLIDE_X),
+            ("robot0:slide1", ROBOT_SLIDE_Y),
+            ("robot0:slide2", ROBOT_SLIDE_Z),
         ):
             joint_id = self.model.joint(joint_name).id
             qpos_addr = self.model.jnt_qposadr[joint_id]

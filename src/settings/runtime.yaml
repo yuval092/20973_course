@@ -57,7 +57,15 @@ graveyard_platform_height: 0.024 # The total thickness of the graveyard platform
 stockfish_paths: [/usr/games/stockfish, /usr/local/bin/stockfish, stockfish] # List of filesystem paths to search for the Stockfish executable.
 stockfish_time_limit: 0.1 # Time in seconds the AI is allowed to think before returning a move.
 
-local_model_path: "sac-FetchPickAndPlace-v4.zip" # The specific ZIP file name of the model weights in the repository.
+hf_repo_id: IntelliGrow/FetchPickAndPlace-v4 # The repository ID containing the pretrained RL policy.
+hf_filename: sac-FetchPickAndPlace-v4.zip # The specific ZIP file name of the model weights in the repository.
+
+local_model_path: "sac-FetchPickAndPlace-v4.zip" # Fallback local ZIP file name.
+
+# Robot slide offsets (controls base position)
+robot_slide_x: 0.30 # Move robot back to avoid touching the board base
+robot_slide_y: 0.48
+robot_slide_z: 0.0
 
 tilt_threshold_cos: 0.966 # Cosine of the maximum tilt angle allowed before a piece is considered "fallen."
 displacement_threshold: 0.4 # Maximum horizontal distance a piece can drift from its square center.

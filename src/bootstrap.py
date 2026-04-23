@@ -53,10 +53,15 @@ try:
 except (ImportError, AttributeError):
     pass
 
+try:
+    from huggingface_sb3 import load_from_hub
+except ImportError:
+    load_from_hub = None
+
 from stable_baselines3 import SAC
 from stable_baselines3.common.buffers import DictReplayBuffer
 
-from src.config import LOCAL_MODEL_PATH, N_SUBSTEPS, SCENE_XML
+from src.config import HF_FILENAME, HF_REPO_ID, LOCAL_MODEL_PATH, N_SUBSTEPS, SCENE_XML
 from src.control.execution_controller import ExecutionController
 from src.env.chess_pick_place_env import ChessPickPlaceEnv
 from src.exceptions import (
@@ -103,41 +108,61 @@ class SystemBootstrapper:
                 f"Failed to load MuJoCo scene '{scene_xml}': {exc}") from exc
 
     @staticmethod
-    def load_rl_policy(env, model_path=LOCAL_MODEL_PATH):
+    def load_rl_policy(env, repo_id=HF_REPO_ID, filename=HF_FILENAME, local_path=LOCAL_MODEL_PATH):
         """
-        Load the pretrained RL policy from a local file.
+        Load the pretrained RL policy. Tries Hugging Face first, then local fallback.
         
         Args:
             env: The environment the policy was trained for.
-            model_path: Path to the .zip model file.
+            repo_id: Hugging Face repository ID.
+            filename: The model filename in the hub.
+            local_path: Fallback local path to the .zip model file.
             
         Returns:
             The loaded RL model.
             
         Raises:
-            RLModelError: If the model fails to load.
+            RLModelError: If both loading attempts fail.
         """
-        logger.info("Loading local RL model: %s...", model_path)
-        if not os.path.exists(model_path):
-            # Try relative to project root if not absolute
-            from src.config import PACKAGE_DIR
-            alt_path = os.path.join(PACKAGE_DIR.parent, model_path)
-            if os.path.exists(alt_path):
-                model_path = alt_path
+        model_to_load = None
+        
+        # 1. Try Hugging Face
+        if load_from_hub is not None and repo_id and filename:
+            logger.info("Attempting to load RL model from Hugging Face Hub: %s/%s...", repo_id, filename)
+            try:
+                model_to_load = load_from_hub(repo_id, filename)
+                logger.info("Successfully downloaded model from Hub.")
+            except Exception as e:
+                logger.warning("Failed to load from Hugging Face Hub: %s. Falling back to local.", e)
+
+        # 2. Try Local Fallback
+        if model_to_load is None:
+            logger.info("Loading local RL model: %s...", local_path)
+            if os.path.exists(local_path):
+                model_to_load = local_path
+            else:
+                # Try relative to project root if not absolute
+                from src.config import PACKAGE_DIR
+                alt_path = os.path.join(PACKAGE_DIR.parent, local_path)
+                if os.path.exists(alt_path):
+                    model_to_load = alt_path
+
+        if model_to_load is None:
+            raise RLModelError(f"No model found at {local_path} and Hub download failed.")
 
         try:
             rl_model = SAC.load(
-                model_path,
+                model_to_load,
                 env=env,
                 custom_objects={
                     "observation_space": env.observation_space,
                     "action_space": env.action_space,
                 },
             )
-            logger.info("SAC model loaded successfully from %s", model_path)
+            logger.info("SAC model loaded successfully.")
             return rl_model
         except Exception as exc:
-            raise RLModelError(f"Failed to load RL model from {model_path}: {exc}") from exc
+            raise RLModelError(f"Failed to load RL model: {exc}") from exc
 
     @staticmethod
     def _is_piece_body(body_name):
@@ -212,13 +237,15 @@ class SystemBootstrapper:
             )
 
     @classmethod
-    def bootstrap_game_systems(cls, scene_xml=SCENE_XML, model_path=LOCAL_MODEL_PATH):
+    def bootstrap_game_systems(cls, scene_xml=SCENE_XML, repo_id=HF_REPO_ID, filename=HF_FILENAME, local_path=LOCAL_MODEL_PATH):
         """
         Build all runtime systems into a unified manager payload.
         
         Args:
             scene_xml: Path to MuJoCo scene.
-            model_path: Path to local RL model.
+            repo_id: HF repo ID.
+            filename: HF filename.
+            local_path: Fallback local model path.
             
         Returns:
             A GameSystems instance.
@@ -249,7 +276,7 @@ class SystemBootstrapper:
         log_event(logger, logging.INFO, "scene_loaded", scene_xml=scene_xml)
 
         # 2. Download/Mount Pretrained RL Weights
-        rl_model = cls.load_rl_policy(env, model_path=model_path)
+        rl_model = cls.load_rl_policy(env, repo_id=repo_id, filename=filename, local_path=local_path)
         manager = dummy_systems.manager
         planner = dummy_systems.planner
         controller = dummy_systems.controller

@@ -23,7 +23,7 @@ def main():
     
     print(f"Loading model from: {LOCAL_MODEL_PATH}")
     try:
-        model = SystemBootstrapper.load_rl_policy(env, LOCAL_MODEL_PATH)
+        model = SystemBootstrapper.load_rl_policy(env, local_path=LOCAL_MODEL_PATH)
         print(f"Model loaded: {type(model).__name__}")
         
         # Test prediction

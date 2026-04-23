@@ -84,7 +84,7 @@ class TestStartupRuntime:
         monkeypatch.setattr(bootstrap_module.SAC, "load", mock_sac_fail)
 
         with pytest.raises(RLModelError, match="disk error"):
-            SystemBootstrapper.load_rl_policy(env, model_path="fake.zip")
+            SystemBootstrapper.load_rl_policy(env, local_path="fake.zip")
 
     def test_validate_initial_mapping_rejects_wrong_piece_count(self):
         """

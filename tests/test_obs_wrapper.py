@@ -107,6 +107,3 @@ class TestObsWrapper:
             # Verify grip_vel_lin_scaled (indices 20-22)
             expected_grip_vel = np.array([0.04, 0.05, 0.06]) * dt
             np.testing.assert_allclose(obs[20:23], expected_grip_vel)
-
-            root.destroy()
-

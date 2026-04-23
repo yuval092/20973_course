@@ -105,4 +105,4 @@ class TestGraveyardOperations:
         assert success is False
         assert steps > 50
         # It should hit the stall limit of 50 steps on the distant waypoint:
-        assert steps == 78
+        assert steps == 66
