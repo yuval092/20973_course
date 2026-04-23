@@ -9,11 +9,10 @@ import logging
 import os
 import chess
 import mujoco
-from huggingface_sb3 import load_from_hub
-from sb3_contrib import TQC
+from stable_baselines3 import SAC
 from stable_baselines3.common.buffers import DictReplayBuffer
 
-from src.config import HF_FILENAME, HF_REPO_ID, N_SUBSTEPS, SCENE_XML
+from src.config import LOCAL_MODEL_PATH, N_SUBSTEPS, SCENE_XML
 from src.control.execution_controller import ExecutionController
 from src.env.chess_pick_place_env import ChessPickPlaceEnv
 from src.exceptions import (
@@ -60,14 +59,13 @@ class SystemBootstrapper:
                 f"Failed to load MuJoCo scene '{scene_xml}': {exc}") from exc
 
     @staticmethod
-    def load_rl_policy(env, repo_id=HF_REPO_ID, filename=HF_FILENAME):
+    def load_rl_policy(env, model_path=LOCAL_MODEL_PATH):
         """
-        Load the pretrained RL policy from Hugging Face.
+        Load the pretrained RL policy from a local file.
         
         Args:
             env: The environment the policy was trained for.
-            repo_id: Hugging Face repository ID.
-            filename: The model filename.
+            model_path: Path to the .zip model file.
             
         Returns:
             The loaded RL model.
@@ -75,23 +73,20 @@ class SystemBootstrapper:
         Raises:
             RLModelError: If the model fails to load.
         """
-        logger.info("Loading pretrained model: %s...", repo_id)
+        logger.info("Loading local RL model: %s...", model_path)
+        if not os.path.exists(model_path):
+            # Try relative to project root if not absolute
+            from src.config import PACKAGE_DIR
+            alt_path = os.path.join(PACKAGE_DIR.parent, model_path)
+            if os.path.exists(alt_path):
+                model_path = alt_path
+
         try:
-            checkpoint = load_from_hub(repo_id, filename)
-            rl_model = TQC.load(
-                checkpoint,
-                env=env,
-                custom_objects={
-                    "learning_rate": 0.001,
-                    "lr_schedule": lambda _: 0.001,
-                    "replay_buffer_kwargs": {},
-                    "replay_buffer_class": DictReplayBuffer,
-                },
-            )
-            logger.info("TQC model loaded successfully.")
+            rl_model = SAC.load(model_path, env=env)
+            logger.info("SAC model loaded successfully from %s", model_path)
             return rl_model
         except Exception as exc:
-            raise RLModelError(f"Failed to load RL model: {exc}") from exc
+            raise RLModelError(f"Failed to load RL model from {model_path}: {exc}") from exc
 
     @staticmethod
     def _is_piece_body(body_name):
@@ -166,15 +161,13 @@ class SystemBootstrapper:
             )
 
     @classmethod
-    def bootstrap_game_systems(cls, scene_xml=SCENE_XML, repo_id=HF_REPO_ID,
-                               filename=HF_FILENAME):
+    def bootstrap_game_systems(cls, scene_xml=SCENE_XML, model_path=LOCAL_MODEL_PATH):
         """
         Build all runtime systems into a unified manager payload.
         
         Args:
             scene_xml: Path to MuJoCo scene.
-            repo_id: HF repo ID.
-            filename: Model filename.
+            model_path: Path to local RL model.
             
         Returns:
             A GameSystems instance.
@@ -205,7 +198,7 @@ class SystemBootstrapper:
         log_event(logger, logging.INFO, "scene_loaded", scene_xml=scene_xml)
 
         # 2. Download/Mount Pretrained RL Weights
-        rl_model = cls.load_rl_policy(env, repo_id=repo_id, filename=filename)
+        rl_model = cls.load_rl_policy(env, model_path=model_path)
         manager = dummy_systems.manager
         planner = dummy_systems.planner
         controller = dummy_systems.controller
