@@ -65,43 +65,20 @@ class ChessPickPlaceEnv(gym.Env):
         self._elapsed_steps = 0
         self._policy_horizon = FETCH_POLICY_HORIZON
         self._robot_home_joint_state = None
-        self._home_mocap_pos = None
-        self._home_mocap_quat = None
+        self._home_gripper_target_pos = None
+        self._home_gripper_target_angle = None
         self._home_grip_pos = None
 
         # Cache piece information.
-        self._piece_mesh_geom_ids_map  = self._build_piece_mesh_geom_id_map()
-        self._piece_joint_dofadrs = self._build_piece_joint_dofadrs_map()
-        self._piece_mesh_contact_masks = self._resolve_piece_mesh_contact_masks()
-        self._set_all_pieces_idle()
+        self._piece_3d_model_id_map  = self._build_piece_3d_model_id_map()
+        self._piece_movement_resistance_indices = self._build_piece_movement_resistance_indices_map()
+        self._piece_mesh_contact_masks_map = self._build_piece_mesh_contact_masks_map()
 
-        # Settle the scene.
-        for _ in range(200):
-            mujoco.mj_step(self.model, self.data, self.n_substeps)
+        self._freeze_all_pieces()
+        self._advance_simulation(steps=200)
 
-        # Define workspace bounds.
-        board_half_extent = 4 * SQUARE_SIZE
-        self._mocap_min = np.array([
-            BOARD_CENTER[0] - board_half_extent - WORKSPACE_XY_MARGIN,
-            BOARD_CENTER[1] - board_half_extent - WORKSPACE_XY_MARGIN,
-            WORKSPACE_Z_MIN,
-        ], dtype=np.float64)
-        self._mocap_max = np.array([
-            BOARD_CENTER[0] + board_half_extent + WORKSPACE_XY_MARGIN,
-            BOARD_CENTER[1] + board_half_extent + WORKSPACE_XY_MARGIN,
-            WORKSPACE_Z_MAX,
-        ], dtype=np.float64)
-
-        # Define Gym spaces.
-        low = np.full(25, -np.inf, dtype=np.float32)
-        high = np.full(25, np.inf, dtype=np.float32)
-
-        self.observation_space = spaces.Dict({
-            'observation': spaces.Box(low, high, dtype=np.float32),
-            'achieved_goal': spaces.Box(-np.inf, np.inf, (3,), dtype=np.float32),
-            'desired_goal': spaces.Box(-np.inf, np.inf, (3,), dtype=np.float32),
-        })
-        self.action_space = spaces.Box(-1.0, 1.0, shape=(4,), dtype=np.float32)
+        self._mocap_min, self._mocap_max = self._calculate_board_boundaries()
+        self.observation_space, self.action_space = self._build_robot_io_spaces()
 
         # Initialize robot pose.
         self.reset_robot_pose()
@@ -149,110 +126,159 @@ class ChessPickPlaceEnv(gym.Env):
         Reset the robot to its canonical Fetch hover pose.
         """
         piece_state = self._capture_piece_joint_state()
-        if self._robot_home_joint_state is not None:
-            for joint_name, joint_qpos, joint_qvel in self._robot_home_joint_state:
-                joint_id = self.model.joint(joint_name).id
-                qpos_addr = self.model.jnt_qposadr[joint_id]
-                qvel_addr = self.model.jnt_dofadr[joint_id]
-                self.data.qpos[qpos_addr] = joint_qpos
-                self.data.qvel[qvel_addr] = joint_qvel
-            self.data.mocap_pos[:] = self._home_mocap_pos
-            self.data.mocap_quat[:] = self._home_mocap_quat
-            if self.model.nu > 0:
-                self.data.ctrl[:] = 0.0
-            self._restore_piece_joint_state(piece_state)
-            mujoco.mj_forward(self.model, self.data)
-            return
-
-        # Initialize specific Fetch joints if no home state exists.
-        for joint_name, value in (
-            ("robot0:slide0", ROBOT_SLIDE_X),
-            ("robot0:slide1", ROBOT_SLIDE_Y),
-            ("robot0:slide2", ROBOT_SLIDE_Z),
-        ):
-            joint_id = self.model.joint(joint_name).id
-            qpos_addr = self.model.jnt_qposadr[joint_id]
-            self.data.qpos[qpos_addr] = value
-
-        mujoco_utils.reset_mocap_welds(self.model, self.data)
-        mujoco.mj_forward(self.model, self.data)
-
-        gripper_target = np.asarray(FETCH_INIT_GRIP, dtype=np.float64)
-        gripper_rotation = np.array([1.0, 0.0, 1.0, 0.0], dtype=np.float64)
-
-        self.data.mocap_pos[0] = gripper_target
-        self.data.mocap_quat[0] = gripper_rotation
-        for _ in range(10):
-            mujoco.mj_step(self.model, self.data, nstep=self.n_substeps)
-
+        if self._robot_home_joint_state is None:
+            self._initialize_home_pose()
+        else:
+            self._restore_home_pose()
         self._restore_piece_joint_state(piece_state)
         mujoco.mj_forward(self.model, self.data)
 
-        # Snapshot the home state.
+    def _initialize_home_pose(self):
+        self._move_robot_to_home_position()
+        self._snapshot_home_pose()
+
+    def _move_robot_to_home_position(self):
+        self._set_arm_base_position()
+        self._set_gripper_home_target()
+
+    def _set_joint_position(self, joint_name, value):
+        joint_id = self.model.joint(joint_name).id
+        qpos_addr = self.model.jnt_qposadr[joint_id]
+        self.data.qpos[qpos_addr] = value
+
+    def _set_joint_velocity(self, joint_name, value):
+        joint_id = self.model.joint(joint_name).id
+        qvel_addr = self.model.jnt_dofadr[joint_id]
+        self.data.qvel[qvel_addr] = value
+
+    def _get_joint_position(self, joint_name):
+        joint_id = self.model.joint(joint_name).id
+        qpos_addr = self.model.jnt_qposadr[joint_id]
+        return float(self.data.qpos[qpos_addr])
+
+    def _get_joint_velocity(self, joint_name):
+        joint_id = self.model.joint(joint_name).id
+        qvel_addr = self.model.jnt_dofadr[joint_id]
+        return float(self.data.qvel[qvel_addr])
+
+    def _set_arm_base_position(self):
+        self._set_joint_position("robot0:slide0", ROBOT_SLIDE_X)
+        self._set_joint_position("robot0:slide1", ROBOT_SLIDE_Y)
+        self._set_joint_position("robot0:slide2", ROBOT_SLIDE_Z)
+        mujoco_utils.reset_mocap_welds(self.model, self.data)
+        mujoco.mj_forward(self.model, self.data)
+
+    def _set_gripper_home_target(self):
+        self.data.mocap_pos[0] = np.asarray(FETCH_INIT_GRIP, dtype=np.float64)
+        self.data.mocap_quat[0] = np.array([1.0, 0.0, 1.0, 0.0], dtype=np.float64)
+        self._advance_simulation(steps=10)
+
+    def _snapshot_home_pose(self):
         self._robot_home_joint_state = []
         for joint_idx in range(self.model.njnt):
             joint_name = self.model.joint(joint_idx).name
             if not joint_name or not joint_name.startswith("robot0:"):
-                continue
-            qpos_addr = self.model.jnt_qposadr[joint_idx]
-            qvel_addr = self.model.jnt_dofadr[joint_idx]
-            self._robot_home_joint_state.append(
-                (
-                    joint_name,
-                    float(self.data.qpos[qpos_addr]),
-                    float(self.data.qvel[qvel_addr]),
-                )
-            )
-        self._home_mocap_pos = self.data.mocap_pos.copy()
-        self._home_mocap_quat = self.data.mocap_quat.copy()
-        self._home_grip_pos = self.get_grip_pos()
+                continue # Skip non robot joints such as pieces
+            self._robot_home_joint_state.append((
+                joint_name,
+                self._get_joint_position(joint_name),
+                self._get_joint_velocity(joint_name),
+            ))
+        self._home_gripper_target_pos = self.data.mocap_pos.copy() # commanded target, not necessarily where the gripper lands.
+        self._home_gripper_target_angle = self.data.mocap_quat.copy()
+        self._home_grip_pos = self.get_grip_pos() # actual physical position after physics, may differ from target.
 
-    def _build_piece_mesh_geom_id_map(self):
-        """Scan every MujoCo body in the model and build a dict mapping each name (e.g 'w_pawn_a2') to its
-        mesh geometry ID, essentialy building a table for which shape in the physics model belongs to each piece."""
-        mesh_geom_ids = {}
+
+    def _restore_home_pose(self):
+        for joint_name, joint_qpos, joint_qvel in self._robot_home_joint_state:
+            self._set_joint_position(joint_name, joint_qpos)
+            self._set_joint_velocity(joint_name, joint_qvel)
+        self.data.mocap_pos[:] = self._home_gripper_target_pos
+        self.data.mocap_quat[:] = self._home_gripper_target_angle
+        if self.model.nu > 0:
+            self.data.ctrl[:] = 0.0
+
+    def _is_active_piece(self, name):
+        return bool(name) and name.startswith(("w_", "b_")) and "spare" not in name
+
+    def _find_body_shape_id(self, body, shape_type):
+        shape_count = int(np.asarray(body.geomnum).item())
+        first_shape_idx = int(np.asarray(body.geomadr).item())
+        for offset in range(shape_count):
+            shape_id = first_shape_idx + offset
+            if self.model.geom_type[shape_id] == shape_type:
+                return shape_id
+        return None
+
+    def _build_piece_3d_model_id_map(self):
+        """Build a lookup table so we can enable/disable piece-to-piece collisions per piece
+        without scanning the model every time. Maps each piece name to its 3D model shape ID."""
+        piece_3d_model_ids = {}
         for body_idx in range(self.model.nbody):
             body = self.model.body(body_idx)
-            name = body.name
-            if not name or not name.startswith(("w_", "b_")) or "spare" in name:
+            if not self._is_active_piece(body.name):
                 continue
-            geomnum = int(np.asarray(body.geomnum).item())
-            geomadr = int(np.asarray(body.geomadr).item())
-            for geom_offset in range(geomnum):
-                geom_id = geomadr + geom_offset
-                if self.model.geom_type[geom_id] == mujoco.mjtGeom.mjGEOM_MESH:
-                    mesh_geom_ids[name] = geom_id
-                    break
-        return mesh_geom_ids
+            shape_id = self._find_body_shape_id(body, mujoco.mjtGeom.mjGEOM_MESH)
+            if shape_id is not None:
+                piece_3d_model_ids[body.name] = shape_id
+        return piece_3d_model_ids
 
-    def _build_piece_joint_dofadrs_map(self):
-        """Map piece body names to their freejoint DOF addresses. which is the index into MujoCo's internal
-        state arrays where you read and write the piece's position and velocity."""
+    def _build_piece_movement_resistance_indices_map(self):
+        """Build a lookup table so we can freeze or unfreeze individual pieces without scanning the model every time.
+        Maps each piece name to its index in MuJoCo's damping array, which controls how much it resists movement."""
         joint_dofadrs = {}
         for body_idx in range(self.model.nbody):
             body = self.model.body(body_idx)
-            name = body.name
-            if not name or not name.startswith(("w_", "b_")) or "spare" in name:
+            if not self._is_active_piece(body.name):
                 continue
             joint_id = int(np.asarray(body.jntadr).item())
             if joint_id < 0:
                 continue
-            joint_dofadrs[name] = int(self.model.jnt_dofadr[joint_id])
+            joint_dofadrs[body.name] = int(self.model.jnt_dofadr[joint_id])
         return joint_dofadrs
 
-    def _resolve_piece_mesh_contact_masks(self):
+    def _build_piece_mesh_contact_masks_map(self):
         """Map piece body names to their original (contype, conaffinity) collision masks."""
         return {
             name: (
                 int(self.model.geom_contype[geom_id]),
                 int(self.model.geom_conaffinity[geom_id]),
             )
-            for name, geom_id in self._piece_mesh_geom_ids_map.items()
+            for name, geom_id in self._piece_3d_model_id_map.items()
         }
 
-    def _set_all_pieces_idle(self):
+    def _build_robot_io_spaces(self):
+        low = np.full(25, -np.inf, dtype=np.float32)
+        high = np.full(25, np.inf, dtype=np.float32)
+        observation_space = spaces.Dict({
+            'observation': spaces.Box(low, high, dtype=np.float32),
+            'achieved_goal': spaces.Box(-np.inf, np.inf, (3,), dtype=np.float32),
+            'desired_goal': spaces.Box(-np.inf, np.inf, (3,), dtype=np.float32),
+        })
+        action_space = spaces.Box(-1.0, 1.0, shape=(4,), dtype=np.float32)
+        return observation_space, action_space
+
+    def _calculate_board_boundaries(self):
+        board_half_extent = 4 * SQUARE_SIZE
+        mocap_min = np.array([
+            BOARD_CENTER[0] - board_half_extent - WORKSPACE_XY_MARGIN,
+            BOARD_CENTER[1] - board_half_extent - WORKSPACE_XY_MARGIN,
+            WORKSPACE_Z_MIN,
+        ], dtype=np.float64)
+        mocap_max = np.array([
+            BOARD_CENTER[0] + board_half_extent + WORKSPACE_XY_MARGIN,
+            BOARD_CENTER[1] + board_half_extent + WORKSPACE_XY_MARGIN,
+            WORKSPACE_Z_MAX,
+        ], dtype=np.float64)
+        return mocap_min, mocap_max
+
+    def _advance_simulation(self, steps: int):
+        for _ in range(steps):
+            mujoco.mj_step(self.model, self.data, self.n_substeps)
+
+    def _freeze_all_pieces(self):
         """Disable collision and set high damping on every piece."""
-        for piece_name in self._piece_mesh_geom_ids_map:
+        for piece_name in self._piece_3d_model_id_map:
             self.set_piece_mesh_collision_enabled(piece_name, enabled=False)
             self.set_piece_active_damping(piece_name, active=False)
 
@@ -268,22 +294,23 @@ class ChessPickPlaceEnv(gym.Env):
         self._target_site_name = f"{piece_name}_site"
         self._goal = np.asarray(goal_pos, dtype=np.float64).copy()
         self._elapsed_steps = 0
-        for other_piece in self._piece_joint_dofadrs:
+        for other_piece in self._piece_movement_resistance_indices:
             self.set_piece_active_damping(other_piece, active=(other_piece == piece_name))
         self.set_piece_mesh_collision_enabled(piece_name, enabled=True)
 
     def set_piece_mesh_collision_enabled(self, piece_name, enabled):
         """Enable or disable collision proxies for a piece."""
-        geom_id = self._piece_mesh_geom_ids_map.get(piece_name)
+        geom_id = self._piece_3d_model_id_map.get(piece_name)
         if geom_id is None:
             return
-        contype, conaffinity = self._piece_mesh_contact_masks[piece_name]
+        contype, conaffinity = self._piece_mesh_contact_masks_map[piece_name]
         self.model.geom_contype[geom_id] = contype if enabled else 0
         self.model.geom_conaffinity[geom_id] = conaffinity if enabled else 0
 
     def set_piece_active_damping(self, piece_name, active):
-        """Switch a piece between active and idle damping states."""
-        dofadr = self._piece_joint_dofadrs.get(piece_name)
+        """Switch a piece between active and idle damping states which means high and low resistance.
+           high resistence means the piece wont move."""
+        dofadr = self._piece_movement_resistance_indices.get(piece_name)
         if dofadr is None:
             return
         damping = ACTIVE_PIECE_FREEJOINT_DAMPING if active else IDLE_PIECE_FREEJOINT_DAMPING
