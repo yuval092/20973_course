@@ -28,8 +28,7 @@ import numpy as np
 import mujoco
 
 from src.config import (
-    BOARD_CENTER, SQUARE_SIZE, Z_SAFE, Z_GRASP, ACTION_SCALE, TABLE_HEIGHT,
-    MAX_STEPS_PER_PHASE, SETTLE_STEPS, RETRACT_STEPS,
+    BOARD_CENTER, SQUARE_SIZE, Z_SAFE, Z_GRASP, ACTION_SCALE, TABLE_HEIGHT, SETTLE_STEPS, RETRACT_STEPS,
     PLACEMENT_TOLERANCE, GRIPPER_OPEN, GRIPPER_CLOSED,
     WHITE_GRAVEYARD_ORIGIN, BLACK_GRAVEYARD_ORIGIN,
     GRAVEYARD_SPACING, GRAVEYARD_COLS,
@@ -42,7 +41,7 @@ from src.config import (
     RELEASE_SETTLE_STEPS, RELEASE_VELOCITY_TOLERANCE,
     RELEASE_GRIPPER_OPEN_TOLERANCE, RELEASE_CLEARANCE_MARGIN,
     FINAL_SETTLE_STEPS,
-    PREGRASP_GRIPPER_OPENING, GRASP_DESCEND_OFFSET, CLOSE_DESCEND_OFFSET,
+    PREGRASP_GRIPPER_OPENING, CLOSE_DESCEND_OFFSET,
     CLOSE_DESCEND_STEPS,
 )
 from src.health_checks import CheckHook
@@ -451,16 +450,6 @@ class ExecutionController:
             return np.zeros(2, dtype=np.float64)
         return np.asarray(piece_pos[:2] - grip_pos[:2], dtype=np.float64)
 
-    def _current_carry_offset(self):
-        """Estimate the XYZ offset between the carried piece and grip site."""
-        if not hasattr(self.env, "get_grip_pos"):
-            return np.zeros(3, dtype=np.float64)
-        piece_pos = self.env.get_piece_pos()
-        grip_pos = self.env.get_grip_pos()
-        if piece_pos[2] <= Z_GRASP + 0.004:
-            return np.zeros(3, dtype=np.float64)
-        return np.asarray(piece_pos - grip_pos, dtype=np.float64)
-
     def _placement_stability_issue(self, piece_name, dest_pos):
         """
         Check if the piece is tipped or at an incorrect height.
@@ -543,7 +532,6 @@ class ExecutionController:
         """
         piece_z = float(live_piece_pos[2]) if live_piece_pos is not None else Z_GRASP
         source_approach_z = piece_z + self._source_descend_offset_z
-        dest_approach_z = piece_z + GRASP_DESCEND_OFFSET
         home_goal = np.array(FETCH_INIT_GRIP, dtype=np.float64)
 
         if self.env is not None and getattr(self.env, "home_grip_pos", None) is not None:
@@ -605,7 +593,7 @@ class ExecutionController:
             )
 
         if stage == "CLOSE_GRIPPER_ONLY":
-            return self._actuate_gripper(close=True, viewer=viewer, stabilize_piece=False)
+            return self._actuate_gripper(close=True, viewer=viewer)
 
         if stage == "LIFT_VERIFY":
             self.env.set_target(piece_name, goal)
@@ -870,7 +858,7 @@ class ExecutionController:
                     rl_vertical_only=rl_vertical_only,
                     use_rl=use_rl,
                 )
-                self.env.step(action, viewer=viewer, debug=False, gripper_target=gripper_opening)
+                self.env.step(action, viewer=viewer, gripper_target=gripper_opening)
                 steps_taken += 1
 
                 if max_piece_drift is not None:
@@ -890,17 +878,16 @@ class ExecutionController:
         )
         return success, steps_taken
 
-    def _actuate_gripper(self, close, viewer=None, stabilize_piece=False):
+    def _actuate_gripper(self, close, viewer=None):
         """Open or close the gripper."""
         if close:
-            return self._close_gripper_with_descent(viewer=viewer, stabilize_piece=stabilize_piece)
-        target = 0.0 if close else GRIPPER_OPEN
+            return self._close_gripper_with_descent(viewer=viewer)
+        target = GRIPPER_OPEN
         self._set_gripper_aperture(target, viewer=viewer)
-        piece_to_grip = np.linalg.norm(self.env.get_piece_pos() - self.env.get_grip_pos())
-        success = self._gripper_is_open() if not close else piece_to_grip < GRIP_CONTACT_TOLERANCE
+        success = self._gripper_is_open()
         return success, GRIPPER_ACTUATION_STEPS
 
-    def _close_gripper_with_descent(self, viewer=None, stabilize_piece=False):
+    def _close_gripper_with_descent(self, viewer=None):
         """Close the gripper while descending to ensure a firm grasp."""
         grip_pos = self.env.get_grip_pos()
         piece_pos = self.env.get_piece_pos()
@@ -925,7 +912,7 @@ class ExecutionController:
 
             action = np.zeros(4, dtype=np.float64)
             action[2] = z_descent
-            self.env.step(action, viewer=viewer, debug=False, gripper_target=GRIPPER_CLOSED)
+            self.env.step(action, viewer=viewer, gripper_target=GRIPPER_CLOSED)
             steps_taken += 1
 
             piece_pos = self.env.get_piece_pos()

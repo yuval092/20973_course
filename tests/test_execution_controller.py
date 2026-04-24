@@ -11,7 +11,6 @@ from src.control.execution_controller import ExecutionController
 from src.config import (
     Z_GRASP,
     Z_SAFE,
-    GRASP_DESCEND_OFFSET,
     CLOSE_DESCEND_OFFSET,
     FINAL_SETTLE_STEPS,
     PLACEMENT_TOLERANCE,

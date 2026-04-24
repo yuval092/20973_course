@@ -175,21 +175,6 @@ class RuntimeGuard:
             active_piece_names=set(square_to_piece.values())
         )
 
-    @classmethod
-    def detect_physical_instability(cls, mj_model, mj_data, board,
-                                    square_to_piece, controller):
-        """
-        Raise if the scene no longer matches the expected logical state.
-        
-        Args:
-            mj_model: The MuJoCo model object.
-            mj_data: The MuJoCo data object.
-            board: The chess.Board object.
-            square_to_piece: Mapping of squares to piece body names.
-            controller: The execution controller.
-        """
-        cls.validate_board_state(mj_model, mj_data, board, square_to_piece, controller)
-
     @staticmethod
     def run_freeze_loop(viewer=None, mj_model=None, mj_data=None,
                         sleep_sec=0.1, max_cycles=None):
@@ -233,34 +218,3 @@ class RuntimeGuard:
             exc_info=(type(exc), exc, exc.__traceback__),
         )
         cls.run_freeze_loop(viewer=viewer, mj_model=mj_model, mj_data=mj_data)
-
-
-# Maintain top-level functions for backward compatibility
-def expected_board_squares(board):
-    """Legacy wrapper for expected_board_squares."""
-    return RuntimeGuard.expected_board_squares(board)
-
-
-def validate_board_state(mj_model, mj_data, board, square_to_piece,
-                         controller, position_tolerance=PLACEMENT_TOLERANCE):
-    """Legacy wrapper for validate_board_state."""
-    RuntimeGuard.validate_board_state(mj_model, mj_data, board, square_to_piece,
-                                    controller, position_tolerance)
-
-
-def detect_physical_instability(mj_model, mj_data, board, square_to_piece,
-                                controller):
-    """Legacy wrapper for detect_physical_instability."""
-    RuntimeGuard.detect_physical_instability(mj_model, mj_data, board,
-                                           square_to_piece, controller)
-
-
-def run_freeze_loop(viewer=None, mj_model=None, mj_data=None,
-                    sleep_sec=0.1, max_cycles=None):
-    """Legacy wrapper for run_freeze_loop."""
-    RuntimeGuard.run_freeze_loop(viewer, mj_model, mj_data, sleep_sec, max_cycles)
-
-
-def freeze_on_exception(exc, viewer=None, mj_model=None, mj_data=None):
-    """Legacy wrapper for freeze_on_exception."""
-    RuntimeGuard.freeze_on_exception(exc, viewer, mj_model, mj_data)

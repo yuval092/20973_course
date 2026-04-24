@@ -17,7 +17,7 @@ from gymnasium_robotics.utils import mujoco_utils
 
 from src.config import (
     N_SUBSTEPS, ACTION_SCALE, GOAL_TOLERANCE,
-    GRIPPER_OPEN, GRIPPER_CLOSED,
+    GRIPPER_OPEN,
     L_FINGER_ACTUATOR, R_FINGER_ACTUATOR, GRIP_SITE,
     BOARD_CENTER, SQUARE_SIZE, WORKSPACE_XY_MARGIN,
     WORKSPACE_Z_MIN, WORKSPACE_Z_MAX, VIEWER_STEP_DELAY_SEC,
@@ -55,11 +55,10 @@ class ChessPickPlaceEnv(gym.Env):
         self.data = mj_data
         self.n_substeps = n_substeps
 
-        # Resolve actuator IDs.
-        self._l_actuator_id = self.model.actuator(L_FINGER_ACTUATOR).id
-        self._r_actuator_id = self.model.actuator(R_FINGER_ACTUATOR).id
+        # Actuators are the robot left and right fingers.
+        self._left_finger_id = self.model.actuator(L_FINGER_ACTUATOR).id
+        self._right_finger_id = self.model.actuator(R_FINGER_ACTUATOR).id
 
-        # State tracking.
         self._target_body_name = None
         self._target_site_name = None
         self._goal = None
@@ -71,20 +70,10 @@ class ChessPickPlaceEnv(gym.Env):
         self._home_grip_pos = None
 
         # Cache piece information.
-        self._piece_mesh_geom_ids = self._resolve_piece_mesh_geom_ids()
-        self._piece_joint_dofadrs = self._resolve_piece_joint_dofadrs()
-        self._piece_mesh_contact_masks = {
-            name: (
-                int(self.model.geom_contype[geom_id]),
-                int(self.model.geom_conaffinity[geom_id]),
-            )
-            for name, geom_id in self._piece_mesh_geom_ids.items()
-        }
-
-        # Initialize pieces to idle state.
-        for piece_name in self._piece_mesh_geom_ids:
-            self.set_piece_mesh_collision_enabled(piece_name, enabled=False)
-            self.set_piece_active_damping(piece_name, active=False)
+        self._piece_mesh_geom_ids_map  = self._build_piece_mesh_geom_id_map()
+        self._piece_joint_dofadrs = self._build_piece_joint_dofadrs_map()
+        self._piece_mesh_contact_masks = self._resolve_piece_mesh_contact_masks()
+        self._set_all_pieces_idle()
 
         # Settle the scene.
         for _ in range(200):
@@ -218,8 +207,9 @@ class ChessPickPlaceEnv(gym.Env):
         self._home_mocap_quat = self.data.mocap_quat.copy()
         self._home_grip_pos = self.get_grip_pos()
 
-    def _resolve_piece_mesh_geom_ids(self):
-        """Map piece body names to their mesh geom IDs."""
+    def _build_piece_mesh_geom_id_map(self):
+        """Scan every MujoCo body in the model and build a dict mapping each name (e.g 'w_pawn_a2') to its
+        mesh geometry ID, essentialy building a table for which shape in the physics model belongs to each piece."""
         mesh_geom_ids = {}
         for body_idx in range(self.model.nbody):
             body = self.model.body(body_idx)
@@ -235,8 +225,9 @@ class ChessPickPlaceEnv(gym.Env):
                     break
         return mesh_geom_ids
 
-    def _resolve_piece_joint_dofadrs(self):
-        """Map piece body names to their freejoint DOF addresses."""
+    def _build_piece_joint_dofadrs_map(self):
+        """Map piece body names to their freejoint DOF addresses. which is the index into MujoCo's internal
+        state arrays where you read and write the piece's position and velocity."""
         joint_dofadrs = {}
         for body_idx in range(self.model.nbody):
             body = self.model.body(body_idx)
@@ -248,6 +239,22 @@ class ChessPickPlaceEnv(gym.Env):
                 continue
             joint_dofadrs[name] = int(self.model.jnt_dofadr[joint_id])
         return joint_dofadrs
+
+    def _resolve_piece_mesh_contact_masks(self):
+        """Map piece body names to their original (contype, conaffinity) collision masks."""
+        return {
+            name: (
+                int(self.model.geom_contype[geom_id]),
+                int(self.model.geom_conaffinity[geom_id]),
+            )
+            for name, geom_id in self._piece_mesh_geom_ids_map.items()
+        }
+
+    def _set_all_pieces_idle(self):
+        """Disable collision and set high damping on every piece."""
+        for piece_name in self._piece_mesh_geom_ids_map:
+            self.set_piece_mesh_collision_enabled(piece_name, enabled=False)
+            self.set_piece_active_damping(piece_name, active=False)
 
     def set_target(self, piece_name, goal_pos):
         """
@@ -267,7 +274,7 @@ class ChessPickPlaceEnv(gym.Env):
 
     def set_piece_mesh_collision_enabled(self, piece_name, enabled):
         """Enable or disable collision proxies for a piece."""
-        geom_id = self._piece_mesh_geom_ids.get(piece_name)
+        geom_id = self._piece_mesh_geom_ids_map.get(piece_name)
         if geom_id is None:
             return
         contype, conaffinity = self._piece_mesh_contact_masks[piece_name]
@@ -313,14 +320,13 @@ class ChessPickPlaceEnv(gym.Env):
             'desired_goal': self._goal.copy(),
         }
 
-    def step(self, action, viewer=None, debug=False, gripper_target=None):
+    def step(self, action, viewer=None, gripper_target=None):
         """
         Apply a 4D action to the simulation.
 
         Args:
             action: 4D numpy array [dx, dy, dz, gripper].
             viewer: Optional MuJoCo viewer.
-            debug: Whether to log debug information.
             gripper_target: Optional deterministic gripper opening value.
 
         Returns:
@@ -378,10 +384,6 @@ class ChessPickPlaceEnv(gym.Env):
         """Safety helper to force gripper open."""
         self.set_gripper_target(GRIPPER_OPEN)
 
-    def force_gripper_closed(self):
-        """Safety helper to force gripper closed."""
-        self.set_gripper_target(GRIPPER_CLOSED)
-
     def set_gripper_target(self, opening):
         """
         Set finger joint targets.
@@ -390,8 +392,8 @@ class ChessPickPlaceEnv(gym.Env):
             opening: Target joint position in meters.
         """
         opening = float(np.clip(opening, 0.0, 0.05))
-        self.data.ctrl[self._l_actuator_id] = opening
-        self.data.ctrl[self._r_actuator_id] = opening
+        self.data.ctrl[self._left_finger_id] = opening
+        self.data.ctrl[self._right_finger_id] = opening
 
     def get_grip_pos(self):
         """Return current end-effector position."""
@@ -427,11 +429,6 @@ class ChessPickPlaceEnv(gym.Env):
         return self._target_body_name
 
     @property
-    def goal(self):
-        """Current target goal position."""
-        return self._goal
-
-    @property
     def home_grip_pos(self):
         """Robot home position."""
         assert self._home_grip_pos is not None
@@ -442,8 +439,3 @@ class ChessPickPlaceEnv(gym.Env):
         """Normalized remaining time for the current task."""
         remaining = 1.0 - (self._elapsed_steps / float(self._policy_horizon))
         return float(np.clip(remaining, 0.0, 1.0))
-
-    @property
-    def policy_horizon(self):
-        """Maximum steps allowed for a policy task."""
-        return self._policy_horizon

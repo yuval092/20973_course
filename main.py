@@ -6,7 +6,7 @@ any unhandled exceptions are caught and handled by the runtime guard.
 
 import logging
 from src.app import main as start_game
-from src.runtime_guard import freeze_on_exception
+from src.runtime_guard import RuntimeGuard
 
 
 class RoboChessLauncher:
@@ -38,7 +38,7 @@ class RoboChessLauncher:
         try:
             start_game()
         except Exception as exc:
-            freeze_on_exception(exc)
+            RuntimeGuard.freeze_on_exception(exc)
 
 
 def main():

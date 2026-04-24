@@ -69,8 +69,3 @@ class NumericalStabilityError(RuntimeCheckError):
 class SceneIntegrityError(RuntimeCheckError):
     """Raised when the MuJoCo scene is missing required robot or piece assets."""
     pass
-
-
-class PolicyWorkspaceError(RoboChessError):
-    """Raised when a target coordinate is outside the trained RL policy area."""
-    pass

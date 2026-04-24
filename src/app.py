@@ -22,7 +22,7 @@ from src.bootstrap import SystemBootstrapper
 from src.game_loop import GameLoop
 from src.gui.board_panel import BoardPanel
 from src.logging_utils import log_event
-from src.runtime_guard import freeze_on_exception
+from src.runtime_guard import RuntimeGuard
 from src.game_runtime import GameOrchestrator
 
 logger = logging.getLogger("robo_chess")
@@ -54,19 +54,7 @@ class RoboChessApp:
         """Print the game-over summary for the current board result."""
         print("\n" + "=" * 50)
         print("  GAME OVER")
-        if board.is_checkmate():
-            winner = "Black" if board.turn == chess.WHITE else "White"
-            print(f"  Checkmate! {winner} wins.")
-        elif board.is_stalemate():
-            print("  Stalemate — draw.")
-        elif board.is_insufficient_material():
-            print("  Draw — insufficient material.")
-        elif board.can_claim_fifty_moves():
-            print("  Draw — 50-move rule.")
-        elif board.can_claim_threefold_repetition():
-            print("  Draw — threefold repetition.")
-        else:
-            print(f"  Result: {board.result()}")
+        print(self._build_result_string(board))
         print("=" * 50)
 
     def _build_result_string(self, board):
@@ -98,7 +86,7 @@ class RoboChessApp:
         if self.root:
             self.root.destroy()
 
-    def game_worker(self):
+    def _game_worker(self):
         """The background thread running physical execution and logic."""
         try:
             with mujoco.viewer.launch_passive(self.systems.mj_model,
@@ -120,10 +108,10 @@ class RoboChessApp:
                                                    self.systems.mj_data)
 
                     # 2. Query Game Loop & Execute Turns
-                    state = self.game_loop.get_state()
+
                     try:
                         res = None
-                        if state.board.turn == chess.WHITE:
+                        if self.systems.manager.board.turn == chess.WHITE:
                             try:
                                 uci = self.move_queue.get(timeout=0.1)
                             except queue.Empty:
@@ -161,24 +149,19 @@ class RoboChessApp:
                     # 3. Post-Turn UI Refresh & Error Handling
                     self.root.after(0, self.panel.refresh)
                     
-                    from src.exceptions import PolicyWorkspaceError
                     if res.success:
                         self.root.after(0, self.panel.append_history, res.message)
                     elif res.error:
-                        if isinstance(res.error, PolicyWorkspaceError):
-                            self.root.after(0, self.panel.set_status,
-                                           f"Outside policy workspace: {res.message}")
-                        else:
-                            logger.error("Execution Error: %s", traceback.format_exc())
-                            self.root.after(0, lambda e=res.error:
-                                          messagebox.showerror("Execution Error", str(e)))
-                            freeze_on_exception(
-                                res.error, 
-                                viewer=viewer, 
-                                mj_model=self.systems.mj_model, 
-                                mj_data=self.systems.mj_data
-                            )
-                            break
+                        logger.error("Execution Error: %s", traceback.format_exc())
+                        self.root.after(0, lambda e=res.error:
+                                        messagebox.showerror("Execution Error", str(e)))
+                        RuntimeGuard.freeze_on_exception(
+                            res.error, 
+                            viewer=viewer, 
+                            mj_model=self.systems.mj_model, 
+                            mj_data=self.systems.mj_data
+                        )
+                        break
                     else:
                         self.root.after(0, self.panel.set_status, f"Failed: {res.message}")
 
@@ -197,8 +180,8 @@ class RoboChessApp:
             if self.systems and self.systems.manager:
                 self.systems.manager.close()
 
-    def run(self):
-        """Run the interactive RoboChess application."""
+    def _setup_app(self):
+        """Set up the application systems and game loop."""
         self.systems = SystemBootstrapper.bootstrap_game_systems()
         log_event(logger, logging.INFO, "viewer_launch")
         
@@ -213,19 +196,21 @@ class RoboChessApp:
             physics_step_callback=self.on_physics_step
         )
         self.panel.pack(fill=tk.BOTH, expand=True)
-
         self.root.protocol("WM_DELETE_WINDOW", self.on_close)
 
-        thread = threading.Thread(target=self.game_worker, daemon=True)
+    def start_game(self):
+        """Run the interactive RoboChess application."""
+        self._setup_app()
+
+        thread = threading.Thread(target=self._game_worker, daemon=True)
         thread.start()
-        
         self.root.mainloop()
 
 
 def main():
     """Application entry point."""
     app = RoboChessApp()
-    app.run()
+    app.start_game()
 
 
 if __name__ == "__main__":

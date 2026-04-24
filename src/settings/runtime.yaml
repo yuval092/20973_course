@@ -8,7 +8,6 @@ n_substeps: 20 # Number of MuJoCo simulation steps executed for every one contro
 action_scale: 0.05 # Multiplier applied to controller outputs to determine physical displacement per step.
 goal_tolerance: 0.05 # Distance threshold used to determine if a waypoint or target has been reached.
 placement_tolerance: 0.025 # Maximum allowed vertical deviation from the target when releasing a piece.
-max_steps_per_phase: 250 # Safety timeout for the maximum steps allowed for any single movement stage.
 fetch_policy_horizon: 50 # Maximum number of steps the RL policy is permitted to run for a sub-task.
 settle_steps: 50 # Number of steps to wait for physics to stabilize after an action completes.
 retract_steps: 25 # Number of steps dedicated to moving the arm away after a piece is released.
@@ -22,7 +21,6 @@ release_gripper_open_tolerance: 0.004 # Precision required for the gripper state
 release_clearance_margin: 0.08 # Extra vertical lift applied immediately after release to avoid collisions.
 final_settle_steps: 120 # Extended wait period at the end of a turn for all physical motion to cease.
 pregrasp_gripper_opening: 0.025 # The width the gripper opens to before descending onto a piece.
-grasp_descend_offset: 0.015 # Vertical distance above the piece where the final descent stage begins.
 close_descend_offset: 0.002 # Tiny vertical adjustment applied during gripping to ensure firm table contact.
 close_descend_steps: 50 # Steps allowed for the micro-descent while the gripper is closing.
 workspace_xy_margin: 0.12 # Buffer zone around the board used for validating robot workspace safety.

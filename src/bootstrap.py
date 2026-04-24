@@ -17,7 +17,6 @@ except ImportError:
     load_from_hub = None
 
 from stable_baselines3 import SAC
-from stable_baselines3.common.buffers import DictReplayBuffer
 
 from src.config import HF_FILENAME, HF_REPO_ID, LOCAL_MODEL_PATH, N_SUBSTEPS, SCENE_XML
 from src.control.execution_controller import ExecutionController
