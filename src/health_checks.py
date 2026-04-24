@@ -28,7 +28,7 @@ from src.exceptions import (
 )
 from src.logging_utils import log_event
 from src.observation.board_observer import BoardObserver
-from src.runtime_guard import validate_board_state
+from src.runtime_guard import RuntimeGuard
 
 logger = logging.getLogger(__name__)
 
@@ -47,7 +47,7 @@ class CheckHook(str, Enum):
 class CheckContext:
     """Context made available to all runtime checks."""
 
-    def __init__(self, hook, systems, viewer=None, move_uci=None,
+    def __init__(self, hook:CheckHook, systems, viewer=None, move_uci=None,
                  stage=None, op=None, extra=None):
         """
         Initialize the check context.
@@ -76,7 +76,7 @@ class RuntimeCheck:
     name = "runtime_check"
     hooks = ()
 
-    def run(self, context):
+    def run(self, context:CheckContext):
         """
         Execute the check logic.
         
@@ -101,7 +101,7 @@ class RuntimeCheckRegistry:
         """
         self._checks = tuple(checks)
 
-    def run(self, hook, context):
+    def run(self, hook:CheckHook, context:CheckContext):
         """
         Run all checks registered for a given hook.
         
@@ -185,7 +185,7 @@ class BoardAgreementCheck(RuntimeCheck):
     def run(self, context):
         """Validate physical board state against logical state."""
         systems = context.systems
-        validate_board_state(
+        RuntimeGuard.validate_board_state(
             systems.mj_model,
             systems.mj_data,
             systems.manager.board,

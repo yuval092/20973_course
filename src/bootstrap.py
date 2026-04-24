@@ -7,51 +7,9 @@ initializing the core game systems.
 
 import logging
 import os
-import sys
 import chess
 import mujoco
-import numpy as np
 
-# NumPy 2.x to 1.x compatibility shim
-# This handles models saved with NumPy 2.x but loaded with NumPy 1.x
-# Must be before any imports that might use numpy (like stable_baselines3)
-if not hasattr(np, '_core'):
-    try:
-        import numpy.core as core
-        sys.modules['numpy._core'] = core
-        import numpy.core.multiarray as multiarray
-        sys.modules['numpy._core.multiarray'] = multiarray
-        import numpy.core.umath as umath
-        sys.modules['numpy._core.umath'] = umath
-        import numpy.core.numeric as numeric
-        sys.modules['numpy._core.numeric'] = numeric
-        import numpy.core.defchararray as defchararray
-        sys.modules['numpy._core.defchararray'] = defchararray
-        import numpy.core.records as records
-        sys.modules['numpy._core.records'] = records
-        import numpy.core.memmap as memmap
-        sys.modules['numpy._core.memmap'] = memmap
-        import numpy.core.function_base as function_base
-        sys.modules['numpy._core.function_base'] = function_base
-        import numpy.core.fromnumeric as fromnumeric
-        sys.modules['numpy._core.fromnumeric'] = fromnumeric
-        import numpy.core._multiarray_umath as _multiarray_umath
-        sys.modules['numpy._core._multiarray_umath'] = _multiarray_umath
-    except ImportError:
-        pass
-
-# Patch NumPy random BitGenerator constructor for NumPy 2.x compatibility
-try:
-    import numpy.random._pickle as npr_pickle
-    old_ctor = npr_pickle.__bit_generator_ctor
-    def new_ctor(bit_generator_name):
-        if not isinstance(bit_generator_name, str):
-            if hasattr(bit_generator_name, '__name__'):
-                bit_generator_name = bit_generator_name.__name__
-        return old_ctor(bit_generator_name)
-    npr_pickle.__bit_generator_ctor = new_ctor
-except (ImportError, AttributeError):
-    pass
 
 try:
     from huggingface_sb3 import load_from_hub
@@ -59,7 +17,6 @@ except ImportError:
     load_from_hub = None
 
 from stable_baselines3 import SAC
-from stable_baselines3.common.buffers import DictReplayBuffer
 
 from src.config import HF_FILENAME, HF_REPO_ID, LOCAL_MODEL_PATH, N_SUBSTEPS, SCENE_XML
 from src.control.execution_controller import ExecutionController
@@ -82,7 +39,7 @@ class SystemBootstrapper:
     """Handles the initialization of all RoboChess runtime systems."""
 
     @staticmethod
-    def load_scene(scene_xml=SCENE_XML):
+    def _load_scene(scene_xml=SCENE_XML):
         """
         Load the MuJoCo scene and return the loaded model/data pair.
         
@@ -220,7 +177,7 @@ class SystemBootstrapper:
         return square_to_piece
 
     @staticmethod
-    def validate_initial_mapping(square_to_piece):
+    def _validate_initial_mapping(square_to_piece):
         """
         Validate that the scene booted with a complete 32-piece board mapping.
         
@@ -251,7 +208,7 @@ class SystemBootstrapper:
             A GameSystems instance.
         """
         # 1. Start Environment & Initial Physics Payload
-        mj_model, mj_data = cls.load_scene(scene_xml)
+        mj_model, mj_data = cls._load_scene(scene_xml)
         env = ChessPickPlaceEnv(mj_model, mj_data, n_substeps=N_SUBSTEPS)
         arm_home_grip = env.get_grip_pos().copy()
         
@@ -286,7 +243,7 @@ class SystemBootstrapper:
         square_to_piece = cls.initialize_square_to_piece(mj_model, mj_data)
         log_event(logger, logging.INFO, "board_initialized",
                   mapped_pieces=len(square_to_piece))
-        cls.validate_initial_mapping(square_to_piece)
+        cls._validate_initial_mapping(square_to_piece)
         
         systems = GameSystems(
             mj_model=mj_model,

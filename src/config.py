@@ -5,7 +5,6 @@ This module provides a centralized configuration manager for RoboChess,
 handling YAML loading, validation, and access to runtime settings.
 """
 
-import os
 from pathlib import Path
 import yaml
 
@@ -66,7 +65,6 @@ class ConfigManager:
             "action_scale": (int, float),
             "goal_tolerance": (int, float),
             "placement_tolerance": (int, float),
-            "max_steps_per_phase": int,
             "fetch_policy_horizon": int,
             "settle_steps": int,
             "retract_steps": int,
@@ -80,7 +78,6 @@ class ConfigManager:
             "release_clearance_margin": (int, float),
             "final_settle_steps": int,
             "pregrasp_gripper_opening": (int, float),
-            "grasp_descend_offset": (int, float),
             "close_descend_offset": (int, float),
             "close_descend_steps": int,
             "workspace_xy_margin": (int, float),
@@ -153,7 +150,6 @@ _MANAGER = ConfigManager()
 
 # Export directories and files
 PACKAGE_DIR = _MANAGER.package_dir
-ASSETS_DIR = _MANAGER.assets_dir
 SETTINGS_DIR = _MANAGER.settings_dir
 SCENE_XML = _MANAGER.scene_xml
 
@@ -167,7 +163,6 @@ N_SUBSTEPS = _MANAGER.get("n_substeps")
 ACTION_SCALE = _MANAGER.get("action_scale")
 GOAL_TOLERANCE = _MANAGER.get("goal_tolerance")
 PLACEMENT_TOLERANCE = _MANAGER.get("placement_tolerance")
-MAX_STEPS_PER_PHASE = _MANAGER.get("max_steps_per_phase")
 FETCH_POLICY_HORIZON = _MANAGER.get("fetch_policy_horizon")
 SETTLE_STEPS = _MANAGER.get("settle_steps")
 RETRACT_STEPS = _MANAGER.get("retract_steps")
@@ -181,7 +176,6 @@ RELEASE_GRIPPER_OPEN_TOLERANCE = _MANAGER.get("release_gripper_open_tolerance")
 RELEASE_CLEARANCE_MARGIN = _MANAGER.get("release_clearance_margin")
 FINAL_SETTLE_STEPS = _MANAGER.get("final_settle_steps")
 PREGRASP_GRIPPER_OPENING = _MANAGER.get("pregrasp_gripper_opening")
-GRASP_DESCEND_OFFSET = _MANAGER.get("grasp_descend_offset")
 CLOSE_DESCEND_OFFSET = _MANAGER.get("close_descend_offset")
 CLOSE_DESCEND_STEPS = _MANAGER.get("close_descend_steps")
 WORKSPACE_XY_MARGIN = _MANAGER.get("workspace_xy_margin")

@@ -11,7 +11,6 @@ from src.control.execution_controller import ExecutionController
 from src.config import (
     Z_GRASP,
     Z_SAFE,
-    GRASP_DESCEND_OFFSET,
     CLOSE_DESCEND_OFFSET,
     FINAL_SETTLE_STEPS,
     PLACEMENT_TOLERANCE,
@@ -70,7 +69,7 @@ class TestExecutionController:
         def get_obs(self):
             return {"observation": np.zeros(1)}
 
-        def get_gripper_finger_qpos(self):
+        def get_finger_joint_positions(self):
             return np.array([0.05, 0.05])
 
     def test_reachability_accepts_in_bounds_goal(self):

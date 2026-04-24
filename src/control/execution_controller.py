@@ -28,8 +28,7 @@ import numpy as np
 import mujoco
 
 from src.config import (
-    BOARD_CENTER, SQUARE_SIZE, Z_SAFE, Z_GRASP, ACTION_SCALE, TABLE_HEIGHT,
-    MAX_STEPS_PER_PHASE, SETTLE_STEPS, RETRACT_STEPS,
+    BOARD_CENTER, SQUARE_SIZE, Z_SAFE, Z_GRASP, ACTION_SCALE, TABLE_HEIGHT, SETTLE_STEPS, RETRACT_STEPS,
     PLACEMENT_TOLERANCE, GRIPPER_OPEN, GRIPPER_CLOSED,
     WHITE_GRAVEYARD_ORIGIN, BLACK_GRAVEYARD_ORIGIN,
     GRAVEYARD_SPACING, GRAVEYARD_COLS,
@@ -42,10 +41,11 @@ from src.config import (
     RELEASE_SETTLE_STEPS, RELEASE_VELOCITY_TOLERANCE,
     RELEASE_GRIPPER_OPEN_TOLERANCE, RELEASE_CLEARANCE_MARGIN,
     FINAL_SETTLE_STEPS,
-    PREGRASP_GRIPPER_OPENING, GRASP_DESCEND_OFFSET, CLOSE_DESCEND_OFFSET,
+    PREGRASP_GRIPPER_OPENING, CLOSE_DESCEND_OFFSET,
     CLOSE_DESCEND_STEPS,
 )
 from src.health_checks import CheckHook
+from src.env.chess_pick_place_env import GripperAction
 
 logger = logging.getLogger(__name__)
 
@@ -451,16 +451,6 @@ class ExecutionController:
             return np.zeros(2, dtype=np.float64)
         return np.asarray(piece_pos[:2] - grip_pos[:2], dtype=np.float64)
 
-    def _current_carry_offset(self):
-        """Estimate the XYZ offset between the carried piece and grip site."""
-        if not hasattr(self.env, "get_grip_pos"):
-            return np.zeros(3, dtype=np.float64)
-        piece_pos = self.env.get_piece_pos()
-        grip_pos = self.env.get_grip_pos()
-        if piece_pos[2] <= Z_GRASP + 0.004:
-            return np.zeros(3, dtype=np.float64)
-        return np.asarray(piece_pos - grip_pos, dtype=np.float64)
-
     def _placement_stability_issue(self, piece_name, dest_pos):
         """
         Check if the piece is tipped or at an incorrect height.
@@ -543,7 +533,6 @@ class ExecutionController:
         """
         piece_z = float(live_piece_pos[2]) if live_piece_pos is not None else Z_GRASP
         source_approach_z = piece_z + self._source_descend_offset_z
-        dest_approach_z = piece_z + GRASP_DESCEND_OFFSET
         home_goal = np.array(FETCH_INIT_GRIP, dtype=np.float64)
 
         if self.env is not None and getattr(self.env, "home_grip_pos", None) is not None:
@@ -605,7 +594,7 @@ class ExecutionController:
             )
 
         if stage == "CLOSE_GRIPPER_ONLY":
-            return self._actuate_gripper(close=True, viewer=viewer, stabilize_piece=False)
+            return self._actuate_gripper(close=True, viewer=viewer)
 
         if stage == "LIFT_VERIFY":
             self.env.set_target(piece_name, goal)
@@ -634,7 +623,7 @@ class ExecutionController:
         if stage == "OPEN_GRIPPER_ONLY":
             success, steps_taken = self._actuate_gripper(close=False, viewer=viewer)
             if success:
-                self.env.set_piece_mesh_collision_enabled(piece_name, enabled=False)
+                self.env.set_piece_collision_enabled(piece_name, enabled=False)
             return success, steps_taken
 
         if stage == "POST_RELEASE_SETTLE":
@@ -870,7 +859,7 @@ class ExecutionController:
                     rl_vertical_only=rl_vertical_only,
                     use_rl=use_rl,
                 )
-                self.env.step(action, viewer=viewer, debug=False, gripper_target=gripper_opening)
+                self.env.step(action, viewer=viewer, gripper_target=gripper_opening)
                 steps_taken += 1
 
                 if max_piece_drift is not None:
@@ -890,17 +879,16 @@ class ExecutionController:
         )
         return success, steps_taken
 
-    def _actuate_gripper(self, close, viewer=None, stabilize_piece=False):
+    def _actuate_gripper(self, close, viewer=None):
         """Open or close the gripper."""
         if close:
-            return self._close_gripper_with_descent(viewer=viewer, stabilize_piece=stabilize_piece)
-        target = 0.0 if close else GRIPPER_OPEN
+            return self._close_gripper_with_descent(viewer=viewer)
+        target = GRIPPER_OPEN
         self._set_gripper_aperture(target, viewer=viewer)
-        piece_to_grip = np.linalg.norm(self.env.get_piece_pos() - self.env.get_grip_pos())
-        success = self._gripper_is_open() if not close else piece_to_grip < GRIP_CONTACT_TOLERANCE
+        success = self._gripper_is_open()
         return success, GRIPPER_ACTUATION_STEPS
 
-    def _close_gripper_with_descent(self, viewer=None, stabilize_piece=False):
+    def _close_gripper_with_descent(self, viewer=None):
         """Close the gripper while descending to ensure a firm grasp."""
         grip_pos = self.env.get_grip_pos()
         piece_pos = self.env.get_piece_pos()
@@ -923,9 +911,8 @@ class ExecutionController:
             piece_to_grip = np.linalg.norm(piece_pos - grip_pos)
             z_descent = -0.05 if piece_to_grip > desired_contact_gap else 0.0
 
-            action = np.zeros(4, dtype=np.float64)
-            action[2] = z_descent
-            self.env.step(action, viewer=viewer, debug=False, gripper_target=GRIPPER_CLOSED)
+            action = GripperAction(dx=0.0, dy=0.0, dz=z_descent, finger_command=0.0)
+            self.env.step(action, viewer=viewer, gripper_target=GRIPPER_CLOSED)
             steps_taken += 1
 
             piece_pos = self.env.get_piece_pos()
@@ -940,7 +927,7 @@ class ExecutionController:
         grip_pos = self.env.get_grip_pos()
         xy_dist = np.linalg.norm(piece_pos[:2] - grip_pos[:2])
         piece_to_grip = np.linalg.norm(piece_pos - grip_pos)
-        finger_qpos = self.env.get_gripper_finger_qpos()
+        finger_qpos = self.env.get_finger_joint_positions()
         fingers_closed = np.max(np.abs(finger_qpos)) < 0.002
         success = xy_dist < GRIP_CONTACT_TOLERANCE and piece_to_grip < desired_contact_gap and fingers_closed
         return success, steps_taken
@@ -956,7 +943,7 @@ class ExecutionController:
 
     def _gripper_is_open(self):
         """Return whether finger joints are near the open pose."""
-        return bool(np.min(self.env.get_gripper_finger_qpos()) >= GRIPPER_OPEN - RELEASE_GRIPPER_OPEN_TOLERANCE)
+        return bool(np.min(self.env.get_finger_joint_positions()) >= GRIPPER_OPEN - RELEASE_GRIPPER_OPEN_TOLERANCE)
 
     def _released_piece_issue(self, goal_pos, tolerate_contact_jitter=False):
         """Detect if the released piece is disturbed."""
@@ -1006,12 +993,11 @@ class ExecutionController:
         )
         return success, max_steps
 
-    def _compose_guided_action(self, delta, max_cartesian_action=1.0, rl_vertical_only=False, use_rl=False):
+    def _compose_guided_action(self, delta, max_cartesian_action=1.0, rl_vertical_only=False, use_rl=False) -> GripperAction:
         """Blend waypoint guidance with RL policy inference."""
         delta = np.asarray(delta, dtype=np.float64)
-        scripted = np.zeros(4, dtype=np.float64)
-        scripted[:3] = np.clip(delta / ACTION_SCALE, -max_cartesian_action, max_cartesian_action)
-        scripted[3] = 0.0
+        clipped = np.clip(delta / ACTION_SCALE, -max_cartesian_action, max_cartesian_action)
+        scripted = GripperAction(dx=clipped[0], dy=clipped[1], dz=clipped[2], finger_command=0.0)
         if not use_rl or self.rl_model is None:
             return scripted
 
@@ -1022,19 +1008,18 @@ class ExecutionController:
         except Exception:
             return scripted
 
+        scripted_xyz = np.array([scripted.dx, scripted.dy, scripted.dz])
         if rl_action.shape != (4,) or np.linalg.norm(delta) < 0.02:
             return scripted
 
-        alignment = float(np.dot(rl_action[:3], scripted[:3]))
+        alignment = float(np.dot(rl_action[:3], scripted_xyz))
         if alignment <= 0.0:
             return scripted
 
-        blended = scripted.copy()
-        blended[:3] = np.clip(0.7 * scripted[:3] + 0.3 * rl_action[:3], -max_cartesian_action, max_cartesian_action)
+        blended_xyz = np.clip(0.7 * scripted_xyz + 0.3 * rl_action[:3], -max_cartesian_action, max_cartesian_action)
         if rl_vertical_only:
-            blended[:2] = scripted[:2]
-        blended[3] = 0.0
-        return blended
+            blended_xyz[:2] = scripted_xyz[:2]
+        return GripperAction(dx=blended_xyz[0], dy=blended_xyz[1], dz=blended_xyz[2], finger_command=0.0)
 
     @staticmethod
     def _sync_viewer(viewer=None):
