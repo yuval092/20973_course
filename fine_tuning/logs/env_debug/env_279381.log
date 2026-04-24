@@ -1,0 +1,1 @@
+2026-04-24 14:37:10,746 - [ENV] - --- EPISODE START | Scenario: ASCEND | Start: [0.9218987  0.28585242 0.415     ] | Goal: [0.9218987  0.28585242 0.55      ] | DriftLimit: 0.0800 | FloorLimit: 0.4500 ---

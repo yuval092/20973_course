@@ -1,0 +1,325 @@
+2026-04-23 23:50:30,635 - [ENV] - --- EPISODE START | Scenario: DESCEND | Start: [1.14274301 0.07499759 0.55      ] | Goal: [1.14274301 0.07499759 0.41      ] | DriftLimit: 0.0800 | FloorLimit: 0.4500 ---
+2026-04-23 23:50:30,902 - [ENV] - TERMINATED (Descend): Tube Drift = 0.0804m (Max 0.0800m) at step 27
+2026-04-23 23:50:30,902 - [ENV] - Episode ended without success at step 27. Final dist: 0.0861m
+2026-04-23 23:50:30,903 - [ENV] - --- EPISODE START | Scenario: TRANSIT | Start: [0.97952478 0.32935914 0.55      ] | Goal: [1.13476425 0.21448444 0.55      ] | DriftLimit: 0.0800 | FloorLimit: 0.4500 ---
+2026-04-23 23:50:31,070 - [ENV] - TERMINATED (Transit): Floor collision. Z = 0.4466m (Min 0.450m) at step 9
+2026-04-23 23:50:31,070 - [ENV] - Episode ended without success at step 9. Final dist: 0.1948m
+2026-04-23 23:50:31,070 - [ENV] - --- EPISODE START | Scenario: DESCEND | Start: [0.61089878 0.43064361 0.55      ] | Goal: [0.61089878 0.43064361 0.415     ] | DriftLimit: 0.0800 | FloorLimit: 0.4500 ---
+2026-04-23 23:50:31,648 - [ENV] - TERMINATED (Descend): Tube Drift = 0.0969m (Max 0.0799m) at step 33
+2026-04-23 23:50:31,648 - [ENV] - Episode ended without success at step 33. Final dist: 0.1123m
+2026-04-23 23:50:31,648 - [ENV] - --- EPISODE START | Scenario: ASCEND | Start: [0.70124421 0.45752128 0.41      ] | Goal: [0.70124421 0.45752128 0.55      ] | DriftLimit: 0.0799 | FloorLimit: 0.4500 ---
+2026-04-23 23:50:31,737 - [ENV] - TERMINATED (Ascend): Tube Drift = 0.0857m (Max 0.0799m) at step 6
+2026-04-23 23:50:31,737 - [ENV] - Episode ended without success at step 6. Final dist: 0.1147m
+2026-04-23 23:50:31,737 - [ENV] - --- EPISODE START | Scenario: TRANSIT | Start: [0.71391737 0.15281699 0.55      ] | Goal: [1.14720651 0.13901006 0.55      ] | DriftLimit: 0.0799 | FloorLimit: 0.4500 ---
+2026-04-23 23:50:31,786 - [ENV] - TERMINATED (Transit): Floor collision. Z = 0.4143m (Min 0.450m) at step 5
+2026-04-23 23:50:31,786 - [ENV] - Episode ended without success at step 5. Final dist: 0.4441m
+2026-04-23 23:50:31,787 - [ENV] - --- EPISODE START | Scenario: ASCEND | Start: [0.68207335 0.41650993 0.41      ] | Goal: [0.68207335 0.41650993 0.55      ] | DriftLimit: 0.0799 | FloorLimit: 0.4500 ---
+2026-04-23 23:50:32,007 - [ENV] - TERMINATED (Ascend): Tube Drift = 0.0883m (Max 0.0799m) at step 20
+2026-04-23 23:50:32,007 - [ENV] - Episode ended without success at step 20. Final dist: 0.1409m
+2026-04-23 23:50:32,007 - [ENV] - --- EPISODE START | Scenario: DESCEND | Start: [0.89291578 0.04804948 0.55      ] | Goal: [0.89291578 0.04804948 0.415     ] | DriftLimit: 0.0799 | FloorLimit: 0.4500 ---
+2026-04-23 23:50:32,262 - [ENV] - TERMINATED (Descend): Tube Drift = 0.0803m (Max 0.0799m) at step 22
+2026-04-23 23:50:32,263 - [ENV] - Episode ended without success at step 22. Final dist: 0.0803m
+2026-04-23 23:50:32,263 - [ENV] - --- EPISODE START | Scenario: DESCEND | Start: [1.10698858 0.09937361 0.55      ] | Goal: [1.10698858 0.09937361 0.415     ] | DriftLimit: 0.0799 | FloorLimit: 0.4500 ---
+2026-04-23 23:50:32,450 - [ENV] - TERMINATED (Descend): Tube Drift = 0.0847m (Max 0.0799m) at step 14
+2026-04-23 23:50:32,451 - [ENV] - Episode ended without success at step 14. Final dist: 0.1248m
+2026-04-23 23:50:32,451 - [ENV] - --- EPISODE START | Scenario: DESCEND | Start: [1.00561593 0.1394407  0.55      ] | Goal: [1.00561593 0.1394407  0.415     ] | DriftLimit: 0.0799 | FloorLimit: 0.4501 ---
+2026-04-23 23:50:32,491 - [ENV] - TERMINATED (Descend): Tube Drift = 0.1005m (Max 0.0799m) at step 4
+2026-04-23 23:50:32,491 - [ENV] - Episode ended without success at step 4. Final dist: 0.2104m
+2026-04-23 23:50:32,491 - [ENV] - --- EPISODE START | Scenario: ASCEND | Start: [0.7794049  0.22139962 0.41      ] | Goal: [0.7794049  0.22139962 0.55      ] | DriftLimit: 0.0799 | FloorLimit: 0.4501 ---
+2026-04-23 23:50:32,589 - [ENV] - TERMINATED (Ascend): Tube Drift = 0.1035m (Max 0.0799m) at step 7
+2026-04-23 23:50:32,589 - [ENV] - Episode ended without success at step 7. Final dist: 0.1450m
+2026-04-23 23:50:32,590 - [ENV] - --- EPISODE START | Scenario: TRANSIT | Start: [0.73087971 0.40881867 0.55      ] | Goal: [0.86700093 0.21827339 0.55      ] | DriftLimit: 0.0799 | FloorLimit: 0.4501 ---
+2026-04-23 23:50:32,631 - [ENV] - TERMINATED (Transit): Floor collision. Z = 0.4239m (Min 0.450m) at step 5
+2026-04-23 23:50:32,632 - [ENV] - Episode ended without success at step 5. Final dist: 0.2420m
+2026-04-23 23:50:32,632 - [ENV] - --- EPISODE START | Scenario: DESCEND | Start: [0.75341274 0.32594106 0.55      ] | Goal: [0.75341274 0.32594106 0.41      ] | DriftLimit: 0.0799 | FloorLimit: 0.4501 ---
+2026-04-23 23:50:32,790 - [ENV] - TERMINATED (Descend): Tube Drift = 0.1013m (Max 0.0799m) at step 23
+2026-04-23 23:50:32,790 - [ENV] - Episode ended without success at step 23. Final dist: 0.1052m
+2026-04-23 23:50:32,791 - [ENV] - --- EPISODE START | Scenario: TRANSIT | Start: [1.0337427  0.36703966 0.55      ] | Goal: [0.62926051 0.37673367 0.55      ] | DriftLimit: 0.0799 | FloorLimit: 0.4501 ---
+2026-04-23 23:50:32,857 - [ENV] - TERMINATED (Transit): Floor collision. Z = 0.4427m (Min 0.450m) at step 6
+2026-04-23 23:50:32,857 - [ENV] - Episode ended without success at step 6. Final dist: 0.3954m
+2026-04-23 23:50:32,857 - [ENV] - --- EPISODE START | Scenario: DESCEND | Start: [0.64357345 0.45051867 0.55      ] | Goal: [0.64357345 0.45051867 0.415     ] | DriftLimit: 0.0799 | FloorLimit: 0.4501 ---
+2026-04-23 23:50:32,916 - [ENV] - TERMINATED (Descend): Tube Drift = 0.0810m (Max 0.0799m) at step 10
+2026-04-23 23:50:32,916 - [ENV] - Episode ended without success at step 10. Final dist: 0.1089m
+2026-04-23 23:50:32,917 - [ENV] - --- EPISODE START | Scenario: DESCEND | Start: [0.75315787 0.42972546 0.55      ] | Goal: [0.75315787 0.42972546 0.41      ] | DriftLimit: 0.0799 | FloorLimit: 0.4501 ---
+2026-04-23 23:50:33,030 - [ENV] - TERMINATED (Descend): Tube Drift = 0.0871m (Max 0.0799m) at step 9
+2026-04-23 23:50:33,030 - [ENV] - Episode ended without success at step 9. Final dist: 0.0886m
+2026-04-23 23:50:33,031 - [ENV] - --- EPISODE START | Scenario: DESCEND | Start: [1.02211437 0.45783098 0.55      ] | Goal: [1.02211437 0.45783098 0.415     ] | DriftLimit: 0.0799 | FloorLimit: 0.4501 ---
+2026-04-23 23:50:33,076 - [ENV] - TERMINATED (Descend): Tube Drift = 0.0954m (Max 0.0798m) at step 8
+2026-04-23 23:50:33,076 - [ENV] - Episode ended without success at step 8. Final dist: 0.1562m
+2026-04-23 23:50:33,077 - [ENV] - --- EPISODE START | Scenario: TRANSIT | Start: [0.65528864 0.2433585  0.55      ] | Goal: [1.06204638 0.2207063  0.55      ] | DriftLimit: 0.0798 | FloorLimit: 0.4501 ---
+2026-04-23 23:50:33,123 - [ENV] - TERMINATED (Transit): Floor collision. Z = 0.4362m (Min 0.450m) at step 5
+2026-04-23 23:50:33,124 - [ENV] - Episode ended without success at step 5. Final dist: 0.4898m
+2026-04-23 23:50:33,124 - [ENV] - --- EPISODE START | Scenario: DESCEND | Start: [0.77557897 0.3009111  0.55      ] | Goal: [0.77557897 0.3009111  0.415     ] | DriftLimit: 0.0798 | FloorLimit: 0.4501 ---
+2026-04-23 23:50:33,202 - [ENV] - TERMINATED (Descend): Tube Drift = 0.0804m (Max 0.0798m) at step 5
+2026-04-23 23:50:33,202 - [ENV] - Episode ended without success at step 5. Final dist: 0.0919m
+2026-04-23 23:50:33,203 - [ENV] - --- EPISODE START | Scenario: DESCEND | Start: [0.64723118 0.10855888 0.55      ] | Goal: [0.64723118 0.10855888 0.415     ] | DriftLimit: 0.0798 | FloorLimit: 0.4501 ---
+2026-04-23 23:50:33,259 - [ENV] - TERMINATED (Descend): Tube Drift = 0.0807m (Max 0.0798m) at step 6
+2026-04-23 23:50:33,259 - [ENV] - Episode ended without success at step 6. Final dist: 0.1030m
+2026-04-23 23:50:33,260 - [ENV] - --- EPISODE START | Scenario: ASCEND | Start: [1.07403219 0.4989984  0.41      ] | Goal: [1.07403219 0.4989984  0.55      ] | DriftLimit: 0.0798 | FloorLimit: 0.4501 ---
+2026-04-23 23:50:33,343 - [ENV] - TERMINATED (Ascend): Tube Drift = 0.0918m (Max 0.0798m) at step 6
+2026-04-23 23:50:33,343 - [ENV] - Episode ended without success at step 6. Final dist: 0.1022m
+2026-04-23 23:50:33,343 - [ENV] - --- EPISODE START | Scenario: ASCEND | Start: [0.99659083 0.48307641 0.41      ] | Goal: [0.99659083 0.48307641 0.55      ] | DriftLimit: 0.0798 | FloorLimit: 0.4501 ---
+2026-04-23 23:50:33,442 - [ENV] - TERMINATED (Ascend): Tube Drift = 0.0918m (Max 0.0798m) at step 11
+2026-04-23 23:50:33,442 - [ENV] - Episode ended without success at step 11. Final dist: 0.1165m
+2026-04-23 23:50:33,442 - [ENV] - --- EPISODE START | Scenario: DESCEND | Start: [0.87512621 0.17675016 0.55      ] | Goal: [0.87512621 0.17675016 0.41      ] | DriftLimit: 0.0798 | FloorLimit: 0.4501 ---
+2026-04-23 23:50:33,494 - [ENV] - TERMINATED (Descend): Tube Drift = 0.0852m (Max 0.0798m) at step 10
+2026-04-23 23:50:33,494 - [ENV] - Episode ended without success at step 10. Final dist: 0.0922m
+2026-04-23 23:50:33,495 - [ENV] - --- EPISODE START | Scenario: ASCEND | Start: [0.69077691 0.32037741 0.41      ] | Goal: [0.69077691 0.32037741 0.55      ] | DriftLimit: 0.0798 | FloorLimit: 0.4501 ---
+2026-04-23 23:50:33,681 - [ENV] - TERMINATED (Ascend): Tube Drift = 0.0830m (Max 0.0798m) at step 11
+2026-04-23 23:50:33,682 - [ENV] - Episode ended without success at step 11. Final dist: 0.1368m
+2026-04-23 23:50:33,682 - [ENV] - --- EPISODE START | Scenario: TRANSIT | Start: [0.6667808  0.24047278 0.55      ] | Goal: [0.65733702 0.35269572 0.55      ] | DriftLimit: 0.0798 | FloorLimit: 0.4501 ---
+2026-04-23 23:50:33,726 - [ENV] - TERMINATED (Transit): Floor collision. Z = 0.4280m (Min 0.450m) at step 4
+2026-04-23 23:50:33,726 - [ENV] - Episode ended without success at step 4. Final dist: 0.1571m
+2026-04-23 23:50:33,727 - [ENV] - --- EPISODE START | Scenario: ASCEND | Start: [0.98391815 0.23382656 0.41      ] | Goal: [0.98391815 0.23382656 0.55      ] | DriftLimit: 0.0798 | FloorLimit: 0.4501 ---
+2026-04-23 23:50:33,854 - [ENV] - TERMINATED (Ascend): Tube Drift = 0.0941m (Max 0.0798m) at step 17
+2026-04-23 23:50:33,854 - [ENV] - Episode ended without success at step 17. Final dist: 0.1450m
+2026-04-23 23:50:33,855 - [ENV] - --- EPISODE START | Scenario: ASCEND | Start: [0.85494558 0.43914077 0.41      ] | Goal: [0.85494558 0.43914077 0.55      ] | DriftLimit: 0.0798 | FloorLimit: 0.4501 ---
+2026-04-23 23:50:33,937 - [ENV] - TERMINATED (Ascend): Tube Drift = 0.0836m (Max 0.0798m) at step 6
+2026-04-23 23:50:33,937 - [ENV] - Episode ended without success at step 6. Final dist: 0.1355m
+2026-04-23 23:50:33,938 - [ENV] - --- EPISODE START | Scenario: ASCEND | Start: [0.89784198 0.14334921 0.41      ] | Goal: [0.89784198 0.14334921 0.55      ] | DriftLimit: 0.0798 | FloorLimit: 0.4501 ---
+2026-04-23 23:50:34,029 - [ENV] - TERMINATED (Ascend): Tube Drift = 0.0919m (Max 0.0798m) at step 10
+2026-04-23 23:50:34,029 - [ENV] - Episode ended without success at step 10. Final dist: 0.1238m
+2026-04-23 23:50:34,030 - [ENV] - --- EPISODE START | Scenario: TRANSIT | Start: [1.07601853 0.40839095 0.55      ] | Goal: [1.146444   0.29030289 0.55      ] | DriftLimit: 0.0798 | FloorLimit: 0.4501 ---
+2026-04-23 23:50:34,063 - [ENV] - TERMINATED (Transit): Floor collision. Z = 0.4407m (Min 0.450m) at step 5
+2026-04-23 23:50:34,063 - [ENV] - Episode ended without success at step 5. Final dist: 0.2003m
+2026-04-23 23:50:34,064 - [ENV] - --- EPISODE START | Scenario: TRANSIT | Start: [0.73422777 0.37122764 0.55      ] | Goal: [1.10017806 0.07758589 0.55      ] | DriftLimit: 0.0798 | FloorLimit: 0.4501 ---
+2026-04-23 23:50:34,122 - [ENV] - TERMINATED (Transit): Floor collision. Z = 0.4466m (Min 0.450m) at step 4
+2026-04-23 23:50:34,122 - [ENV] - Episode ended without success at step 4. Final dist: 0.4765m
+2026-04-23 23:50:34,122 - [ENV] - --- EPISODE START | Scenario: DESCEND | Start: [1.0907381  0.24640779 0.55      ] | Goal: [1.0907381  0.24640779 0.415     ] | DriftLimit: 0.0798 | FloorLimit: 0.4501 ---
+2026-04-23 23:50:34,222 - [ENV] - TERMINATED (Descend): Tube Drift = 0.0852m (Max 0.0798m) at step 4
+2026-04-23 23:50:34,222 - [ENV] - Episode ended without success at step 4. Final dist: 0.1384m
+2026-04-23 23:50:34,223 - [ENV] - --- EPISODE START | Scenario: TRANSIT | Start: [0.88201582 0.01842297 0.55      ] | Goal: [1.1333785  0.35373563 0.55      ] | DriftLimit: 0.0798 | FloorLimit: 0.4501 ---
+2026-04-23 23:50:34,612 - [ENV] - TERMINATED (Transit): Floor collision. Z = 0.4243m (Min 0.450m) at step 33
+2026-04-23 23:50:34,613 - [ENV] - Episode ended without success at step 33. Final dist: 0.4625m
+2026-04-23 23:50:34,613 - [ENV] - --- EPISODE START | Scenario: ASCEND | Start: [1.11338523 0.4707537  0.41      ] | Goal: [1.11338523 0.4707537  0.55      ] | DriftLimit: 0.0797 | FloorLimit: 0.4501 ---
+2026-04-23 23:50:34,739 - [ENV] - TERMINATED (Ascend): Tube Drift = 0.0811m (Max 0.0797m) at step 18
+2026-04-23 23:50:34,740 - [ENV] - Episode ended without success at step 18. Final dist: 0.0991m
+2026-04-23 23:50:34,740 - [ENV] - --- EPISODE START | Scenario: TRANSIT | Start: [0.62502374 0.32299476 0.55      ] | Goal: [ 1.02098371 -0.01282262  0.55      ] | DriftLimit: 0.0797 | FloorLimit: 0.4501 ---
+2026-04-23 23:50:35,455 - [ENV] - TERMINATED (Transit): Floor collision. Z = 0.4251m (Min 0.450m) at step 120
+2026-04-23 23:50:35,455 - [ENV] - Episode ended without success at step 120. Final dist: 0.4702m
+2026-04-23 23:50:35,456 - [ENV] - --- EPISODE START | Scenario: TRANSIT | Start: [0.84932372 0.13341132 0.55      ] | Goal: [0.66023669 0.42504558 0.55      ] | DriftLimit: 0.0796 | FloorLimit: 0.4502 ---
+2026-04-23 23:50:35,487 - [ENV] - TERMINATED (Transit): Floor collision. Z = 0.4484m (Min 0.450m) at step 3
+2026-04-23 23:50:35,487 - [ENV] - Episode ended without success at step 3. Final dist: 0.3911m
+2026-04-23 23:50:35,487 - [ENV] - --- EPISODE START | Scenario: ASCEND | Start: [0.75464118 0.37024673 0.41      ] | Goal: [0.75464118 0.37024673 0.55      ] | DriftLimit: 0.0796 | FloorLimit: 0.4502 ---
+2026-04-23 23:50:35,578 - [ENV] - TERMINATED (Ascend): Tube Drift = 0.0931m (Max 0.0796m) at step 5
+2026-04-23 23:50:35,578 - [ENV] - Episode ended without success at step 5. Final dist: 0.1524m
+2026-04-23 23:50:35,579 - [ENV] - --- EPISODE START | Scenario: DESCEND | Start: [1.07206732 0.13072744 0.55      ] | Goal: [1.07206732 0.13072744 0.41      ] | DriftLimit: 0.0796 | FloorLimit: 0.4502 ---
+2026-04-23 23:50:35,976 - [ENV] - SUCCESS: Goal reached in 18 steps. Dist = 0.0082m
+2026-04-23 23:50:35,976 - [ENV] - --- EPISODE START | Scenario: TRANSIT | Start: [0.74179133 0.53916994 0.55      ] | Goal: [0.84720088 0.12836034 0.55      ] | DriftLimit: 0.0796 | FloorLimit: 0.4502 ---
+2026-04-23 23:50:36,537 - [ENV] - TERMINATED (Transit): Floor collision. Z = 0.4366m (Min 0.450m) at step 21
+2026-04-23 23:50:36,537 - [ENV] - Episode ended without success at step 21. Final dist: 0.3924m
+2026-04-23 23:50:36,537 - [ENV] - --- EPISODE START | Scenario: TRANSIT | Start: [1.00272963 0.30077618 0.55      ] | Goal: [0.8398017 0.0549441 0.55     ] | DriftLimit: 0.0796 | FloorLimit: 0.4502 ---
+2026-04-23 23:50:36,712 - [ENV] - TERMINATED (Transit): Floor collision. Z = 0.4386m (Min 0.450m) at step 3
+2026-04-23 23:50:36,713 - [ENV] - Episode ended without success at step 3. Final dist: 0.4001m
+2026-04-23 23:50:36,713 - [ENV] - --- EPISODE START | Scenario: TRANSIT | Start: [0.60403883 0.42827227 0.55      ] | Goal: [0.77699464 0.24915154 0.55      ] | DriftLimit: 0.0796 | FloorLimit: 0.4502 ---
+2026-04-23 23:50:45,619 - [ENV] - TERMINATED (Transit): Floor collision. Z = 0.4451m (Min 0.450m) at step 145
+2026-04-23 23:50:45,619 - [ENV] - Episode ended without success at step 145. Final dist: 0.5429m
+2026-04-23 23:50:45,621 - [ENV] - --- EPISODE START | Scenario: ASCEND | Start: [1.0134335  0.44322542 0.41      ] | Goal: [1.0134335  0.44322542 0.55      ] | DriftLimit: 0.0795 | FloorLimit: 0.4503 ---
+2026-04-23 23:50:45,926 - [ENV] - TERMINATED (Ascend): Tube Drift = 0.0947m (Max 0.0795m) at step 3
+2026-04-23 23:50:45,926 - [ENV] - Episode ended without success at step 3. Final dist: 0.1155m
+2026-04-23 23:50:45,928 - [ENV] - --- EPISODE START | Scenario: TRANSIT | Start: [1.07177922 0.1970009  0.55      ] | Goal: [0.80932594 0.17241532 0.55      ] | DriftLimit: 0.0795 | FloorLimit: 0.4503 ---
+2026-04-23 23:50:46,132 - [ENV] - TERMINATED (Transit): Floor collision. Z = 0.4278m (Min 0.450m) at step 3
+2026-04-23 23:50:46,133 - [ENV] - Episode ended without success at step 3. Final dist: 0.3589m
+2026-04-23 23:50:46,133 - [ENV] - --- EPISODE START | Scenario: DESCEND | Start: [1.05008949 0.10573235 0.55      ] | Goal: [1.05008949 0.10573235 0.415     ] | DriftLimit: 0.0795 | FloorLimit: 0.4503 ---
+2026-04-23 23:50:46,733 - [ENV] - TERMINATED (Descend): Tube Drift = 0.0815m (Max 0.0795m) at step 5
+2026-04-23 23:50:46,734 - [ENV] - Episode ended without success at step 5. Final dist: 0.0817m
+2026-04-23 23:50:46,735 - [ENV] - --- EPISODE START | Scenario: DESCEND | Start: [0.94276047 0.06076891 0.55      ] | Goal: [0.94276047 0.06076891 0.41      ] | DriftLimit: 0.0795 | FloorLimit: 0.4503 ---
+2026-04-23 23:50:47,353 - [ENV] - TERMINATED (Descend): Tube Drift = 0.0795m (Max 0.0795m) at step 7
+2026-04-23 23:50:47,353 - [ENV] - Episode ended without success at step 7. Final dist: 0.0800m
+2026-04-23 23:50:47,354 - [ENV] - --- EPISODE START | Scenario: ASCEND | Start: [0.80161187 0.16376335 0.41      ] | Goal: [0.80161187 0.16376335 0.55      ] | DriftLimit: 0.0795 | FloorLimit: 0.4503 ---
+2026-04-23 23:50:47,798 - [ENV] - TERMINATED (Ascend): Tube Drift = 0.1161m (Max 0.0795m) at step 3
+2026-04-23 23:50:47,798 - [ENV] - Episode ended without success at step 3. Final dist: 0.1520m
+2026-04-23 23:50:47,800 - [ENV] - --- EPISODE START | Scenario: TRANSIT | Start: [0.63850537 0.38713108 0.55      ] | Goal: [0.7720025  0.24407466 0.55      ] | DriftLimit: 0.0795 | FloorLimit: 0.4503 ---
+2026-04-23 23:50:48,318 - [ENV] - TERMINATED (Transit): Floor collision. Z = 0.4198m (Min 0.450m) at step 4
+2026-04-23 23:50:48,318 - [ENV] - Episode ended without success at step 4. Final dist: 0.2069m
+2026-04-23 23:50:48,320 - [ENV] - --- EPISODE START | Scenario: TRANSIT | Start: [1.08166018 0.03247421 0.55      ] | Goal: [0.86862768 0.04929878 0.55      ] | DriftLimit: 0.0795 | FloorLimit: 0.4503 ---
+2026-04-23 23:50:48,625 - [ENV] - TERMINATED (Transit): Floor collision. Z = 0.4274m (Min 0.450m) at step 3
+2026-04-23 23:50:48,625 - [ENV] - Episode ended without success at step 3. Final dist: 0.1872m
+2026-04-23 23:50:48,627 - [ENV] - --- EPISODE START | Scenario: TRANSIT | Start: [0.74389644 0.47946089 0.55      ] | Goal: [0.92958291 0.29224701 0.55      ] | DriftLimit: 0.0795 | FloorLimit: 0.4503 ---
+2026-04-23 23:50:48,856 - [ENV] - TERMINATED (Transit): Floor collision. Z = 0.4444m (Min 0.450m) at step 2
+2026-04-23 23:50:48,856 - [ENV] - Episode ended without success at step 2. Final dist: 0.2254m
+2026-04-23 23:50:48,857 - [ENV] - --- EPISODE START | Scenario: ASCEND | Start: [0.85422436 0.12327089 0.41      ] | Goal: [0.85422436 0.12327089 0.55      ] | DriftLimit: 0.0795 | FloorLimit: 0.4503 ---
+2026-04-23 23:50:49,106 - [ENV] - TERMINATED (Ascend): Tube Drift = 0.0891m (Max 0.0795m) at step 2
+2026-04-23 23:50:49,106 - [ENV] - Episode ended without success at step 2. Final dist: 0.1298m
+2026-04-23 23:50:49,107 - [ENV] - --- EPISODE START | Scenario: ASCEND | Start: [0.70729964 0.40115673 0.41      ] | Goal: [0.70729964 0.40115673 0.55      ] | DriftLimit: 0.0795 | FloorLimit: 0.4503 ---
+2026-04-23 23:50:49,393 - [ENV] - TERMINATED (Ascend): Tube Drift = 0.0953m (Max 0.0795m) at step 3
+2026-04-23 23:50:49,393 - [ENV] - Episode ended without success at step 3. Final dist: 0.1567m
+2026-04-23 23:50:49,394 - [ENV] - --- EPISODE START | Scenario: TRANSIT | Start: [0.93002473 0.26113649 0.55      ] | Goal: [0.61761067 0.05417461 0.55      ] | DriftLimit: 0.0795 | FloorLimit: 0.4503 ---
+2026-04-23 23:50:55,880 - [ENV] - --- EPISODE START | Scenario: ASCEND | Start: [0.62068903 0.36687919 0.41      ] | Goal: [0.62068903 0.36687919 0.55      ] | DriftLimit: 0.0793 | FloorLimit: 0.4504 ---
+2026-04-23 23:50:56,078 - [ENV] - TERMINATED (Ascend): Tube Drift = 0.0909m (Max 0.0793m) at step 2
+2026-04-23 23:50:56,078 - [ENV] - Episode ended without success at step 2. Final dist: 0.1436m
+2026-04-23 23:50:56,078 - [ENV] - --- EPISODE START | Scenario: DESCEND | Start: [0.62643303 0.52785263 0.55      ] | Goal: [0.62643303 0.52785263 0.41      ] | DriftLimit: 0.0793 | FloorLimit: 0.4504 ---
+2026-04-23 23:50:56,323 - [ENV] - TERMINATED (Descend): Tube Drift = 0.0908m (Max 0.0793m) at step 5
+2026-04-23 23:50:56,323 - [ENV] - Episode ended without success at step 5. Final dist: 0.0911m
+2026-04-23 23:50:56,324 - [ENV] - --- EPISODE START | Scenario: DESCEND | Start: [0.85085942 0.32215942 0.55      ] | Goal: [0.85085942 0.32215942 0.415     ] | DriftLimit: 0.0793 | FloorLimit: 0.4504 ---
+2026-04-23 23:50:56,525 - [ENV] - TERMINATED (Descend): Tube Drift = 0.0919m (Max 0.0793m) at step 4
+2026-04-23 23:50:56,525 - [ENV] - Episode ended without success at step 4. Final dist: 0.0922m
+2026-04-23 23:50:56,525 - [ENV] - --- EPISODE START | Scenario: DESCEND | Start: [1.08903846 0.20501765 0.55      ] | Goal: [1.08903846 0.20501765 0.415     ] | DriftLimit: 0.0793 | FloorLimit: 0.4504 ---
+2026-04-23 23:50:58,551 - [ENV] - TERMINATED (Descend): Tube Drift = 0.0800m (Max 0.0793m) at step 57
+2026-04-23 23:50:58,552 - [ENV] - Episode ended without success at step 57. Final dist: 0.0800m
+2026-04-23 23:50:58,552 - [ENV] - --- EPISODE START | Scenario: ASCEND | Start: [0.86566022 0.42722241 0.41      ] | Goal: [0.86566022 0.42722241 0.55      ] | DriftLimit: 0.0793 | FloorLimit: 0.4504 ---
+2026-04-23 23:50:58,711 - [ENV] - TERMINATED (Ascend): Tube Drift = 0.0850m (Max 0.0793m) at step 2
+2026-04-23 23:50:58,711 - [ENV] - Episode ended without success at step 2. Final dist: 0.1314m
+2026-04-23 23:50:58,712 - [ENV] - --- EPISODE START | Scenario: ASCEND | Start: [1.06169193 0.3883618  0.41      ] | Goal: [1.06169193 0.3883618  0.55      ] | DriftLimit: 0.0793 | FloorLimit: 0.4504 ---
+2026-04-23 23:50:58,939 - [ENV] - TERMINATED (Ascend): Tube Drift = 0.1165m (Max 0.0793m) at step 3
+2026-04-23 23:50:58,939 - [ENV] - Episode ended without success at step 3. Final dist: 0.1339m
+2026-04-23 23:50:58,939 - [ENV] - --- EPISODE START | Scenario: DESCEND | Start: [0.86006261 0.30760595 0.55      ] | Goal: [0.86006261 0.30760595 0.41      ] | DriftLimit: 0.0793 | FloorLimit: 0.4504 ---
+2026-04-23 23:51:04,006 - [ENV] - --- EPISODE START | Scenario: TRANSIT | Start: [1.0940342  0.07263154 0.55      ] | Goal: [0.86073707 0.44473982 0.55      ] | DriftLimit: 0.0792 | FloorLimit: 0.4505 ---
+2026-04-23 23:51:09,266 - [ENV] - --- EPISODE START | Scenario: DESCEND | Start: [0.85176575 0.22637072 0.55      ] | Goal: [0.85176575 0.22637072 0.41      ] | DriftLimit: 0.0790 | FloorLimit: 0.4505 ---
+2026-04-23 23:51:14,254 - [ENV] - --- EPISODE START | Scenario: ASCEND | Start: [0.61033729 0.3072327  0.41      ] | Goal: [0.61033729 0.3072327  0.55      ] | DriftLimit: 0.0789 | FloorLimit: 0.4506 ---
+2026-04-23 23:51:14,809 - [ENV] - TERMINATED (Ascend): Tube Drift = 0.0997m (Max 0.0789m) at step 4
+2026-04-23 23:51:14,809 - [ENV] - Episode ended without success at step 4. Final dist: 0.1599m
+2026-04-23 23:51:14,810 - [ENV] - --- EPISODE START | Scenario: DESCEND | Start: [ 1.12633762 -0.01048867  0.55      ] | Goal: [ 1.12633762 -0.01048867  0.415     ] | DriftLimit: 0.0789 | FloorLimit: 0.4506 ---
+2026-04-23 23:51:14,938 - [ENV] - TERMINATED (Descend): Tube Drift = 0.0916m (Max 0.0789m) at step 3
+2026-04-23 23:51:14,939 - [ENV] - Episode ended without success at step 3. Final dist: 0.0921m
+2026-04-23 23:51:14,939 - [ENV] - --- EPISODE START | Scenario: ASCEND | Start: [0.8059805  0.44597451 0.41      ] | Goal: [0.8059805  0.44597451 0.55      ] | DriftLimit: 0.0789 | FloorLimit: 0.4506 ---
+2026-04-23 23:51:15,213 - [ENV] - TERMINATED (Ascend): Tube Drift = 0.0925m (Max 0.0789m) at step 3
+2026-04-23 23:51:15,213 - [ENV] - Episode ended without success at step 3. Final dist: 0.1531m
+2026-04-23 23:51:15,214 - [ENV] - --- EPISODE START | Scenario: TRANSIT | Start: [1.08330808 0.23329359 0.55      ] | Goal: [0.63701282 0.26278926 0.55      ] | DriftLimit: 0.0789 | FloorLimit: 0.4506 ---
+2026-04-23 23:51:20,386 - [ENV] - --- EPISODE START | Scenario: ASCEND | Start: [0.69699912 0.01518414 0.41      ] | Goal: [0.69699912 0.01518414 0.55      ] | DriftLimit: 0.0788 | FloorLimit: 0.4507 ---
+2026-04-23 23:51:20,698 - [ENV] - TERMINATED (Ascend): Tube Drift = 0.0838m (Max 0.0788m) at step 5
+2026-04-23 23:51:20,698 - [ENV] - Episode ended without success at step 5. Final dist: 0.1351m
+2026-04-23 23:51:20,699 - [ENV] - --- EPISODE START | Scenario: DESCEND | Start: [0.83498647 0.40706329 0.55      ] | Goal: [0.83498647 0.40706329 0.41      ] | DriftLimit: 0.0788 | FloorLimit: 0.4507 ---
+2026-04-23 23:51:25,822 - [ENV] - --- EPISODE START | Scenario: DESCEND | Start: [0.62317487 0.01213032 0.55      ] | Goal: [0.62317487 0.01213032 0.415     ] | DriftLimit: 0.0786 | FloorLimit: 0.4507 ---
+2026-04-23 23:51:26,049 - [ENV] - SUCCESS: Goal reached in 5 steps. Dist = 0.0098m
+2026-04-23 23:51:26,050 - [ENV] - --- EPISODE START | Scenario: DESCEND | Start: [0.79991508 0.22832063 0.55      ] | Goal: [0.79991508 0.22832063 0.415     ] | DriftLimit: 0.0786 | FloorLimit: 0.4507 ---
+2026-04-23 23:51:26,359 - [ENV] - SUCCESS: Goal reached in 4 steps. Dist = 0.0068m
+2026-04-23 23:51:26,360 - [ENV] - --- EPISODE START | Scenario: TRANSIT | Start: [0.94212064 0.00159628 0.55      ] | Goal: [0.93038991 0.42354743 0.55      ] | DriftLimit: 0.0786 | FloorLimit: 0.4507 ---
+2026-04-23 23:51:31,117 - [ENV] - --- EPISODE START | Scenario: DESCEND | Start: [0.63342192 0.44005107 0.55      ] | Goal: [0.63342192 0.44005107 0.41      ] | DriftLimit: 0.0785 | FloorLimit: 0.4508 ---
+2026-04-23 23:51:31,458 - [ENV] - SUCCESS: Goal reached in 9 steps. Dist = 0.0095m
+2026-04-23 23:51:31,458 - [ENV] - --- EPISODE START | Scenario: DESCEND | Start: [0.68304903 0.0353399  0.55      ] | Goal: [0.68304903 0.0353399  0.415     ] | DriftLimit: 0.0785 | FloorLimit: 0.4508 ---
+2026-04-23 23:51:31,713 - [ENV] - SUCCESS: Goal reached in 6 steps. Dist = 0.0098m
+2026-04-23 23:51:31,714 - [ENV] - --- EPISODE START | Scenario: TRANSIT | Start: [0.70662461 0.17650612 0.55      ] | Goal: [1.09506378 0.43820763 0.55      ] | DriftLimit: 0.0785 | FloorLimit: 0.4508 ---
+2026-04-23 23:51:38,008 - [ENV] - --- EPISODE START | Scenario: DESCEND | Start: [1.13278069 0.52659189 0.55      ] | Goal: [1.13278069 0.52659189 0.41      ] | DriftLimit: 0.0784 | FloorLimit: 0.4509 ---
+2026-04-23 23:51:43,386 - [ENV] - --- EPISODE START | Scenario: DESCEND | Start: [0.60728934 0.06246134 0.55      ] | Goal: [0.60728934 0.06246134 0.41      ] | DriftLimit: 0.0782 | FloorLimit: 0.4510 ---
+2026-04-23 23:52:25,141 - [ENV] - --- EPISODE START | Scenario: ASCEND | Start: [0.74502769 0.52551889 0.41      ] | Goal: [0.74502769 0.52551889 0.55      ] | DriftLimit: 0.0781 | FloorLimit: 0.4510 ---
+2026-04-23 23:52:25,407 - [ENV] - TERMINATED (Ascend): Tube Drift = 0.1185m (Max 0.0781m) at step 3
+2026-04-23 23:52:25,408 - [ENV] - Episode ended without success at step 3. Final dist: 0.1417m
+2026-04-23 23:52:25,408 - [ENV] - --- EPISODE START | Scenario: ASCEND | Start: [1.07841613 0.43713615 0.41      ] | Goal: [1.07841613 0.43713615 0.55      ] | DriftLimit: 0.0781 | FloorLimit: 0.4510 ---
+2026-04-23 23:52:25,666 - [ENV] - TERMINATED (Ascend): Tube Drift = 0.0861m (Max 0.0781m) at step 2
+2026-04-23 23:52:25,667 - [ENV] - Episode ended without success at step 2. Final dist: 0.1287m
+2026-04-23 23:52:25,668 - [ENV] - --- EPISODE START | Scenario: TRANSIT | Start: [0.97075697 0.00267638 0.55      ] | Goal: [0.73076778 0.06795378 0.55      ] | DriftLimit: 0.0781 | FloorLimit: 0.4510 ---
+2026-04-23 23:52:30,453 - [ENV] - --- EPISODE START | Scenario: DESCEND | Start: [0.81969348 0.01794857 0.55      ] | Goal: [0.81969348 0.01794857 0.415     ] | DriftLimit: 0.0780 | FloorLimit: 0.4511 ---
+2026-04-23 23:52:35,974 - [ENV] - --- EPISODE START | Scenario: TRANSIT | Start: [0.70683093 0.49171868 0.55      ] | Goal: [0.91297633 0.32453868 0.55      ] | DriftLimit: 0.0779 | FloorLimit: 0.4512 ---
+2026-04-23 23:52:41,247 - [ENV] - --- EPISODE START | Scenario: ASCEND | Start: [1.14768289 0.13926678 0.41      ] | Goal: [1.14768289 0.13926678 0.55      ] | DriftLimit: 0.0777 | FloorLimit: 0.4512 ---
+2026-04-23 23:52:41,533 - [ENV] - TERMINATED (Ascend): Tube Drift = 0.0916m (Max 0.0777m) at step 3
+2026-04-23 23:52:41,533 - [ENV] - Episode ended without success at step 3. Final dist: 0.1123m
+2026-04-23 23:52:41,533 - [ENV] - --- EPISODE START | Scenario: ASCEND | Start: [0.68785593 0.10409387 0.41      ] | Goal: [0.68785593 0.10409387 0.55      ] | DriftLimit: 0.0777 | FloorLimit: 0.4512 ---
+2026-04-23 23:52:41,734 - [ENV] - TERMINATED (Ascend): Tube Drift = 0.0892m (Max 0.0777m) at step 2
+2026-04-23 23:52:41,734 - [ENV] - Episode ended without success at step 2. Final dist: 0.1493m
+2026-04-23 23:52:41,735 - [ENV] - --- EPISODE START | Scenario: ASCEND | Start: [0.73774479 0.23757835 0.41      ] | Goal: [0.73774479 0.23757835 0.55      ] | DriftLimit: 0.0777 | FloorLimit: 0.4512 ---
+2026-04-23 23:52:41,938 - [ENV] - TERMINATED (Ascend): Tube Drift = 0.0821m (Max 0.0777m) at step 2
+2026-04-23 23:52:41,938 - [ENV] - Episode ended without success at step 2. Final dist: 0.1432m
+2026-04-23 23:52:41,938 - [ENV] - --- EPISODE START | Scenario: ASCEND | Start: [0.64151754 0.46063743 0.41      ] | Goal: [0.64151754 0.46063743 0.55      ] | DriftLimit: 0.0777 | FloorLimit: 0.4512 ---
+2026-04-23 23:52:42,163 - [ENV] - TERMINATED (Ascend): Tube Drift = 0.0803m (Max 0.0777m) at step 2
+2026-04-23 23:52:42,163 - [ENV] - Episode ended without success at step 2. Final dist: 0.1334m
+2026-04-23 23:52:42,164 - [ENV] - --- EPISODE START | Scenario: TRANSIT | Start: [0.82483795 0.2214505  0.55      ] | Goal: [1.03694668 0.18526999 0.55      ] | DriftLimit: 0.0777 | FloorLimit: 0.4512 ---
+2026-04-23 23:52:47,462 - [ENV] - --- EPISODE START | Scenario: TRANSIT | Start: [0.87950794 0.40696823 0.55      ] | Goal: [0.70210032 0.15799906 0.55      ] | DriftLimit: 0.0776 | FloorLimit: 0.4513 ---
+2026-04-23 23:52:52,825 - [ENV] - --- EPISODE START | Scenario: DESCEND | Start: [1.11920187 0.45247716 0.55      ] | Goal: [1.11920187 0.45247716 0.41      ] | DriftLimit: 0.0775 | FloorLimit: 0.4514 ---
+2026-04-23 23:52:58,375 - [ENV] - --- EPISODE START | Scenario: TRANSIT | Start: [0.93531648 0.14163019 0.55      ] | Goal: [0.91359082 0.03232053 0.55      ] | DriftLimit: 0.0773 | FloorLimit: 0.4515 ---
+2026-04-23 23:53:04,123 - [ENV] - --- EPISODE START | Scenario: TRANSIT | Start: [0.60266954 0.16789577 0.55      ] | Goal: [1.00658694 0.49343045 0.55      ] | DriftLimit: 0.0772 | FloorLimit: 0.4515 ---
+2026-04-23 23:53:09,584 - [ENV] - --- EPISODE START | Scenario: ASCEND | Start: [0.6007203  0.07131334 0.41      ] | Goal: [0.6007203  0.07131334 0.55      ] | DriftLimit: 0.0771 | FloorLimit: 0.4516 ---
+2026-04-23 23:53:09,806 - [ENV] - TERMINATED (Ascend): Tube Drift = 0.1142m (Max 0.0771m) at step 3
+2026-04-23 23:53:09,806 - [ENV] - Episode ended without success at step 3. Final dist: 0.1574m
+2026-04-23 23:53:09,807 - [ENV] - --- EPISODE START | Scenario: TRANSIT | Start: [0.83542727 0.29235715 0.55      ] | Goal: [1.09490182 0.24953682 0.55      ] | DriftLimit: 0.0771 | FloorLimit: 0.4516 ---
+2026-04-23 23:53:15,359 - [ENV] - --- EPISODE START | Scenario: TRANSIT | Start: [1.00401598 0.37172857 0.55      ] | Goal: [0.65413611 0.43757268 0.55      ] | DriftLimit: 0.0769 | FloorLimit: 0.4517 ---
+2026-04-23 23:53:21,083 - [ENV] - --- EPISODE START | Scenario: DESCEND | Start: [1.03434118 0.44547502 0.55      ] | Goal: [1.03434118 0.44547502 0.41      ] | DriftLimit: 0.0768 | FloorLimit: 0.4517 ---
+2026-04-23 23:53:21,366 - [ENV] - SUCCESS: Goal reached in 6 steps. Dist = 0.0095m
+2026-04-23 23:53:21,366 - [ENV] - --- EPISODE START | Scenario: ASCEND | Start: [0.65557961 0.02381918 0.41      ] | Goal: [0.65557961 0.02381918 0.55      ] | DriftLimit: 0.0768 | FloorLimit: 0.4517 ---
+2026-04-23 23:53:21,597 - [ENV] - TERMINATED (Ascend): Tube Drift = 0.0794m (Max 0.0768m) at step 2
+2026-04-23 23:53:21,598 - [ENV] - Episode ended without success at step 2. Final dist: 0.1441m
+2026-04-23 23:53:21,599 - [ENV] - --- EPISODE START | Scenario: TRANSIT | Start: [1.04106054 0.05459107 0.55      ] | Goal: [0.83880279 0.00302509 0.55      ] | DriftLimit: 0.0768 | FloorLimit: 0.4517 ---
+2026-04-23 23:53:26,976 - [ENV] - --- EPISODE START | Scenario: TRANSIT | Start: [0.82786287 0.17856289 0.55      ] | Goal: [1.08290653 0.00206488 0.55      ] | DriftLimit: 0.0767 | FloorLimit: 0.4518 ---
+2026-04-23 23:53:32,583 - [ENV] - --- EPISODE START | Scenario: ASCEND | Start: [1.08897929 0.08379104 0.41      ] | Goal: [1.08897929 0.08379104 0.55      ] | DriftLimit: 0.0766 | FloorLimit: 0.4519 ---
+2026-04-23 23:53:32,719 - [ENV] - TERMINATED (Ascend): Tube Drift = 0.0805m (Max 0.0766m) at step 2
+2026-04-23 23:53:32,720 - [ENV] - Episode ended without success at step 2. Final dist: 0.1309m
+2026-04-23 23:53:32,720 - [ENV] - --- EPISODE START | Scenario: DESCEND | Start: [0.76796538 0.42021084 0.55      ] | Goal: [0.76796538 0.42021084 0.415     ] | DriftLimit: 0.0766 | FloorLimit: 0.4519 ---
+2026-04-23 23:53:33,018 - [ENV] - SUCCESS: Goal reached in 6 steps. Dist = 0.0088m
+2026-04-23 23:53:33,019 - [ENV] - --- EPISODE START | Scenario: TRANSIT | Start: [1.09727747 0.07279098 0.55      ] | Goal: [1.02663482 0.21058747 0.55      ] | DriftLimit: 0.0765 | FloorLimit: 0.4519 ---
+2026-04-23 23:53:38,555 - [ENV] - --- EPISODE START | Scenario: ASCEND | Start: [0.60630919 0.08680495 0.41      ] | Goal: [0.60630919 0.08680495 0.55      ] | DriftLimit: 0.0764 | FloorLimit: 0.4520 ---
+2026-04-23 23:53:38,876 - [ENV] - TERMINATED (Ascend): Tube Drift = 0.0784m (Max 0.0764m) at step 7
+2026-04-23 23:53:38,876 - [ENV] - Episode ended without success at step 7. Final dist: 0.1250m
+2026-04-23 23:53:38,877 - [ENV] - --- EPISODE START | Scenario: TRANSIT | Start: [0.87658644 0.38109183 0.55      ] | Goal: [0.66918591 0.43711258 0.55      ] | DriftLimit: 0.0764 | FloorLimit: 0.4520 ---
+2026-04-23 23:54:17,782 - [ENV] - --- EPISODE START | Scenario: TRANSIT | Start: [1.0286807  0.11628077 0.55      ] | Goal: [1.09872802 0.37369195 0.55      ] | DriftLimit: 0.0763 | FloorLimit: 0.4520 ---
+2026-04-23 23:54:22,923 - [ENV] - --- EPISODE START | Scenario: DESCEND | Start: [1.07310324 0.31354675 0.55      ] | Goal: [1.07310324 0.31354675 0.415     ] | DriftLimit: 0.0762 | FloorLimit: 0.4521 ---
+2026-04-23 23:54:23,161 - [ENV] - SUCCESS: Goal reached in 6 steps. Dist = 0.0084m
+2026-04-23 23:54:23,162 - [ENV] - --- EPISODE START | Scenario: TRANSIT | Start: [0.65218858 0.37864486 0.55      ] | Goal: [ 0.97762644 -0.01403866  0.55      ] | DriftLimit: 0.0762 | FloorLimit: 0.4521 ---
+2026-04-23 23:54:28,107 - [ENV] - --- EPISODE START | Scenario: DESCEND | Start: [0.96210808 0.37643863 0.55      ] | Goal: [0.96210808 0.37643863 0.41      ] | DriftLimit: 0.0760 | FloorLimit: 0.4522 ---
+2026-04-23 23:54:28,355 - [ENV] - SUCCESS: Goal reached in 5 steps. Dist = 0.0093m
+2026-04-23 23:54:28,356 - [ENV] - --- EPISODE START | Scenario: DESCEND | Start: [0.71394076 0.09280359 0.55      ] | Goal: [0.71394076 0.09280359 0.41      ] | DriftLimit: 0.0760 | FloorLimit: 0.4522 ---
+2026-04-23 23:54:34,233 - [ENV] - --- EPISODE START | Scenario: DESCEND | Start: [0.77747029 0.23681635 0.55      ] | Goal: [0.77747029 0.23681635 0.41      ] | DriftLimit: 0.0759 | FloorLimit: 0.4522 ---
+2026-04-23 23:54:39,578 - [ENV] - --- EPISODE START | Scenario: ASCEND | Start: [0.99479285 0.5270482  0.41      ] | Goal: [0.99479285 0.5270482  0.55      ] | DriftLimit: 0.0758 | FloorLimit: 0.4523 ---
+2026-04-23 23:54:39,846 - [ENV] - TERMINATED (Ascend): Tube Drift = 0.0767m (Max 0.0758m) at step 4
+2026-04-23 23:54:39,846 - [ENV] - Episode ended without success at step 4. Final dist: 0.1176m
+2026-04-23 23:54:39,846 - [ENV] - --- EPISODE START | Scenario: ASCEND | Start: [0.78576589 0.50269669 0.41      ] | Goal: [0.78576589 0.50269669 0.55      ] | DriftLimit: 0.0758 | FloorLimit: 0.4523 ---
+2026-04-23 23:54:40,240 - [ENV] - TERMINATED (Ascend): Tube Drift = 0.0964m (Max 0.0758m) at step 8
+2026-04-23 23:54:40,240 - [ENV] - Episode ended without success at step 8. Final dist: 0.0980m
+2026-04-23 23:54:40,241 - [ENV] - --- EPISODE START | Scenario: TRANSIT | Start: [0.71444123 0.15704323 0.55      ] | Goal: [0.7880744  0.04894527 0.55      ] | DriftLimit: 0.0758 | FloorLimit: 0.4523 ---
+2026-04-23 23:54:45,846 - [ENV] - --- EPISODE START | Scenario: DESCEND | Start: [0.92747849 0.38840354 0.55      ] | Goal: [0.92747849 0.38840354 0.415     ] | DriftLimit: 0.0756 | FloorLimit: 0.4524 ---
+2026-04-23 23:54:46,072 - [ENV] - SUCCESS: Goal reached in 5 steps. Dist = 0.0098m
+2026-04-23 23:54:46,073 - [ENV] - --- EPISODE START | Scenario: DESCEND | Start: [0.79866314 0.00436683 0.55      ] | Goal: [0.79866314 0.00436683 0.415     ] | DriftLimit: 0.0756 | FloorLimit: 0.4524 ---
+2026-04-23 23:54:51,858 - [ENV] - --- EPISODE START | Scenario: TRANSIT | Start: [0.61616699 0.08769894 0.55      ] | Goal: [1.15291603 0.03850864 0.55      ] | DriftLimit: 0.0755 | FloorLimit: 0.4525 ---
+2026-04-23 23:54:57,658 - [ENV] - --- EPISODE START | Scenario: TRANSIT | Start: [0.89036168 0.17691989 0.55      ] | Goal: [0.82044781 0.0309916  0.55      ] | DriftLimit: 0.0754 | FloorLimit: 0.4525 ---
+2026-04-23 23:55:03,092 - [ENV] - --- EPISODE START | Scenario: DESCEND | Start: [0.67817147 0.43185929 0.55      ] | Goal: [0.67817147 0.43185929 0.415     ] | DriftLimit: 0.0752 | FloorLimit: 0.4526 ---
+2026-04-23 23:55:03,373 - [ENV] - SUCCESS: Goal reached in 6 steps. Dist = 0.0067m
+2026-04-23 23:55:03,373 - [ENV] - --- EPISODE START | Scenario: ASCEND | Start: [0.63636904 0.13777238 0.41      ] | Goal: [0.63636904 0.13777238 0.55      ] | DriftLimit: 0.0752 | FloorLimit: 0.4526 ---
+2026-04-23 23:55:03,814 - [ENV] - TERMINATED (Ascend): Tube Drift = 0.0780m (Max 0.0752m) at step 12
+2026-04-23 23:55:03,815 - [ENV] - Episode ended without success at step 12. Final dist: 0.1065m
+2026-04-23 23:55:03,815 - [ENV] - --- EPISODE START | Scenario: ASCEND | Start: [1.13496117 0.27655661 0.41      ] | Goal: [1.13496117 0.27655661 0.55      ] | DriftLimit: 0.0752 | FloorLimit: 0.4526 ---
+2026-04-23 23:55:04,015 - [ENV] - TERMINATED (Ascend): Tube Drift = 0.0916m (Max 0.0752m) at step 3
+2026-04-23 23:55:04,016 - [ENV] - Episode ended without success at step 3. Final dist: 0.1191m
+2026-04-23 23:55:04,016 - [ENV] - --- EPISODE START | Scenario: TRANSIT | Start: [0.90899247 0.4077101  0.55      ] | Goal: [1.00609259 0.10009091 0.55      ] | DriftLimit: 0.0752 | FloorLimit: 0.4526 ---
+2026-04-23 23:55:04,955 - [ENV] - SUCCESS: Goal reached in 28 steps. Dist = 0.0099m
+2026-04-23 23:55:04,956 - [ENV] - --- EPISODE START | Scenario: ASCEND | Start: [0.88418898 0.08683437 0.41      ] | Goal: [0.88418898 0.08683437 0.55      ] | DriftLimit: 0.0752 | FloorLimit: 0.4526 ---
+2026-04-23 23:55:05,238 - [ENV] - TERMINATED (Ascend): Tube Drift = 0.0753m (Max 0.0752m) at step 5
+2026-04-23 23:55:05,238 - [ENV] - Episode ended without success at step 5. Final dist: 0.1407m
+2026-04-23 23:55:05,238 - [ENV] - --- EPISODE START | Scenario: TRANSIT | Start: [0.96983874 0.12056792 0.55      ] | Goal: [1.10172916 0.39646599 0.55      ] | DriftLimit: 0.0752 | FloorLimit: 0.4526 ---
+2026-04-23 23:55:10,722 - [ENV] - --- EPISODE START | Scenario: DESCEND | Start: [0.6526062  0.10714262 0.55      ] | Goal: [0.6526062  0.10714262 0.415     ] | DriftLimit: 0.0751 | FloorLimit: 0.4527 ---
+2026-04-23 23:55:16,266 - [ENV] - --- EPISODE START | Scenario: TRANSIT | Start: [0.78280376 0.12889247 0.55      ] | Goal: [0.68063922 0.41807777 0.55      ] | DriftLimit: 0.0749 | FloorLimit: 0.4528 ---
+2026-04-23 23:55:21,656 - [ENV] - --- EPISODE START | Scenario: TRANSIT | Start: [0.91113184 0.354727   0.55      ] | Goal: [0.82801435 0.03019869 0.55      ] | DriftLimit: 0.0748 | FloorLimit: 0.4528 ---
+2026-04-23 23:55:27,422 - [ENV] - --- EPISODE START | Scenario: TRANSIT | Start: [0.65822633 0.40157599 0.55      ] | Goal: [0.82649562 0.15753741 0.55      ] | DriftLimit: 0.0747 | FloorLimit: 0.4529 ---
+2026-04-23 23:55:33,386 - [ENV] - --- EPISODE START | Scenario: ASCEND | Start: [1.14488272 0.363069   0.41      ] | Goal: [1.14488272 0.363069   0.55      ] | DriftLimit: 0.0746 | FloorLimit: 0.4530 ---
+2026-04-23 23:55:33,646 - [ENV] - TERMINATED (Ascend): Tube Drift = 0.0819m (Max 0.0746m) at step 3
+2026-04-23 23:55:33,647 - [ENV] - Episode ended without success at step 3. Final dist: 0.1083m
+2026-04-23 23:55:33,647 - [ENV] - --- EPISODE START | Scenario: TRANSIT | Start: [0.98543041 0.03870702 0.55      ] | Goal: [1.14652554 0.48225035 0.55      ] | DriftLimit: 0.0746 | FloorLimit: 0.4530 ---
+2026-04-23 23:56:11,017 - [ENV] - --- EPISODE START | Scenario: ASCEND | Start: [0.67558357 0.36766024 0.41      ] | Goal: [0.67558357 0.36766024 0.55      ] | DriftLimit: 0.0744 | FloorLimit: 0.4530 ---
+2026-04-23 23:56:11,420 - [ENV] - TERMINATED (Ascend): Tube Drift = 0.0785m (Max 0.0744m) at step 11
+2026-04-23 23:56:11,420 - [ENV] - Episode ended without success at step 11. Final dist: 0.0905m
+2026-04-23 23:56:11,421 - [ENV] - --- EPISODE START | Scenario: TRANSIT | Start: [0.88384651 0.41023948 0.55      ] | Goal: [0.60807626 0.52929518 0.55      ] | DriftLimit: 0.0744 | FloorLimit: 0.4530 ---
+2026-04-23 23:56:16,730 - [ENV] - --- EPISODE START | Scenario: ASCEND | Start: [0.87746297 0.19861932 0.41      ] | Goal: [0.87746297 0.19861932 0.55      ] | DriftLimit: 0.0743 | FloorLimit: 0.4531 ---
+2026-04-23 23:56:17,070 - [ENV] - TERMINATED (Ascend): Tube Drift = 0.0766m (Max 0.0743m) at step 6
+2026-04-23 23:56:17,070 - [ENV] - Episode ended without success at step 6. Final dist: 0.1266m
+2026-04-23 23:56:17,071 - [ENV] - --- EPISODE START | Scenario: ASCEND | Start: [0.83345389 0.54031811 0.41      ] | Goal: [0.83345389 0.54031811 0.55      ] | DriftLimit: 0.0743 | FloorLimit: 0.4531 ---
+2026-04-23 23:56:17,470 - [ENV] - TERMINATED (Ascend): Tube Drift = 0.0865m (Max 0.0743m) at step 7
+2026-04-23 23:56:17,470 - [ENV] - Episode ended without success at step 7. Final dist: 0.0918m
+2026-04-23 23:56:17,471 - [ENV] - --- EPISODE START | Scenario: DESCEND | Start: [0.81446624 0.37600643 0.55      ] | Goal: [0.81446624 0.37600643 0.415     ] | DriftLimit: 0.0743 | FloorLimit: 0.4531 ---
+2026-04-23 23:56:18,928 - [ENV] - SUCCESS: Goal reached in 48 steps. Dist = 0.0099m
+2026-04-23 23:56:18,929 - [ENV] - --- EPISODE START | Scenario: TRANSIT | Start: [0.69977693 0.13286462 0.55      ] | Goal: [0.7303279  0.38995945 0.55      ] | DriftLimit: 0.0742 | FloorLimit: 0.4531 ---
+2026-04-23 23:56:25,305 - [ENV] - --- EPISODE START | Scenario: DESCEND | Start: [0.91977492 0.20386673 0.55      ] | Goal: [0.91977492 0.20386673 0.41      ] | DriftLimit: 0.0741 | FloorLimit: 0.4532 ---
+2026-04-23 23:56:31,028 - [ENV] - --- EPISODE START | Scenario: ASCEND | Start: [0.62890244 0.14936095 0.41      ] | Goal: [0.62890244 0.14936095 0.55      ] | DriftLimit: 0.0740 | FloorLimit: 0.4533 ---
+2026-04-23 23:56:31,755 - [ENV] - TERMINATED (Ascend): Tube Drift = 0.0796m (Max 0.0740m) at step 18
+2026-04-23 23:56:31,755 - [ENV] - Episode ended without success at step 18. Final dist: 0.0801m
+2026-04-23 23:56:31,755 - [ENV] - --- EPISODE START | Scenario: TRANSIT | Start: [0.8326645  0.30389271 0.55      ] | Goal: [1.13851248 0.31880575 0.55      ] | DriftLimit: 0.0740 | FloorLimit: 0.4533 ---
+2026-04-23 23:56:37,497 - [ENV] - --- EPISODE START | Scenario: ASCEND | Start: [0.84416787 0.1648251  0.41      ] | Goal: [0.84416787 0.1648251  0.55      ] | DriftLimit: 0.0738 | FloorLimit: 0.4534 ---
+2026-04-23 23:56:38,084 - [ENV] - TERMINATED (Ascend): Tube Drift = 0.0755m (Max 0.0738m) at step 11
+2026-04-23 23:56:38,085 - [ENV] - Episode ended without success at step 11. Final dist: 0.0775m
+2026-04-23 23:56:38,085 - [ENV] - --- EPISODE START | Scenario: DESCEND | Start: [0.85258736 0.19762484 0.55      ] | Goal: [0.85258736 0.19762484 0.415     ] | DriftLimit: 0.0738 | FloorLimit: 0.4534 ---
+2026-04-23 23:56:38,321 - [ENV] - SUCCESS: Goal reached in 4 steps. Dist = 0.0097m
+2026-04-23 23:56:38,321 - [ENV] - --- EPISODE START | Scenario: TRANSIT | Start: [1.1088974  0.51135527 0.55      ] | Goal: [0.70551122 0.11777188 0.55      ] | DriftLimit: 0.0738 | FloorLimit: 0.4534 ---
+2026-04-23 23:56:44,136 - [ENV] - --- EPISODE START | Scenario: DESCEND | Start: [0.87668557 0.31431354 0.55      ] | Goal: [0.87668557 0.31431354 0.415     ] | DriftLimit: 0.0737 | FloorLimit: 0.4534 ---
+2026-04-23 23:56:44,583 - [ENV] - SUCCESS: Goal reached in 11 steps. Dist = 0.0099m
+2026-04-23 23:56:44,584 - [ENV] - --- EPISODE START | Scenario: TRANSIT | Start: [0.79248321 0.38408497 0.55      ] | Goal: [0.74129979 0.47260113 0.55      ] | DriftLimit: 0.0737 | FloorLimit: 0.4534 ---
+2026-04-23 23:56:50,332 - [ENV] - --- EPISODE START | Scenario: ASCEND | Start: [0.70083757 0.25405855 0.41      ] | Goal: [0.70083757 0.25405855 0.55      ] | DriftLimit: 0.0736 | FloorLimit: 0.4535 ---
+2026-04-23 23:56:50,959 - [ENV] - TERMINATED (Ascend): Tube Drift = 0.0755m (Max 0.0736m) at step 13
+2026-04-23 23:56:50,959 - [ENV] - Episode ended without success at step 13. Final dist: 0.0949m
+2026-04-23 23:56:50,959 - [ENV] - --- EPISODE START | Scenario: ASCEND | Start: [0.63556941 0.39508826 0.41      ] | Goal: [0.63556941 0.39508826 0.55      ] | DriftLimit: 0.0736 | FloorLimit: 0.4535 ---
+2026-04-23 23:56:51,511 - [ENV] - TERMINATED (Ascend): Tube Drift = 0.0822m (Max 0.0736m) at step 13
+2026-04-23 23:56:51,511 - [ENV] - Episode ended without success at step 13. Final dist: 0.1343m
+2026-04-23 23:56:51,511 - [ENV] - --- EPISODE START | Scenario: ASCEND | Start: [0.69323251 0.10048169 0.41      ] | Goal: [0.69323251 0.10048169 0.55      ] | DriftLimit: 0.0736 | FloorLimit: 0.4535 ---
+2026-04-23 23:56:52,131 - [ENV] - TERMINATED (Ascend): Tube Drift = 0.0778m (Max 0.0735m) at step 16
+2026-04-23 23:56:52,131 - [ENV] - Episode ended without success at step 16. Final dist: 0.1322m
+2026-04-23 23:56:52,132 - [ENV] - --- EPISODE START | Scenario: DESCEND | Start: [1.08915641 0.22960101 0.55      ] | Goal: [1.08915641 0.22960101 0.415     ] | DriftLimit: 0.0735 | FloorLimit: 0.4535 ---
+2026-04-23 23:56:52,339 - [ENV] - SUCCESS: Goal reached in 4 steps. Dist = 0.0088m
+2026-04-23 23:56:52,340 - [ENV] - --- EPISODE START | Scenario: TRANSIT | Start: [0.91940313 0.30577619 0.55      ] | Goal: [0.81507741 0.04874897 0.55      ] | DriftLimit: 0.0735 | FloorLimit: 0.4535 ---
+2026-04-23 23:56:58,212 - [ENV] - --- EPISODE START | Scenario: TRANSIT | Start: [0.92432297 0.3733063  0.55      ] | Goal: [0.8393647  0.16140955 0.55      ] | DriftLimit: 0.0734 | FloorLimit: 0.4536 ---
+2026-04-23 23:57:04,506 - [ENV] - --- EPISODE START | Scenario: DESCEND | Start: [0.79202849 0.26517934 0.55      ] | Goal: [0.79202849 0.26517934 0.415     ] | DriftLimit: 0.0733 | FloorLimit: 0.4537 ---
