@@ -7,6 +7,7 @@ Usage:
     PYTHONPATH=. python scripts/test_grasp_physics.py --n-trials 20 --visualize --debug
 """
 import argparse
+import math
 import time
 import numpy as np
 import gymnasium as gym
@@ -21,6 +22,8 @@ def assert_mandatory_preconditions(uw):
     # 1. GRASP_Z check
     assert abs(uw.GRASP_Z - 0.425) < 0.001, \
         f"GRASP_Z={uw.GRASP_Z}, expected 0.425. Restart process after env.yaml change."
+    assert abs(uw.HOVER_Z - 0.460) < 0.001, \
+        f"HOVER_Z={uw.HOVER_Z}, expected 0.460. Restart process after env.yaml change."
     
     # 2. Cube mass check
     cube_body_id = mujoco.mj_name2id(uw.model, mujoco.mjtObj.mjOBJ_BODY, "object0")
@@ -33,6 +36,8 @@ def assert_mandatory_preconditions(uw):
     # Plan says 0.016 for verification (ABOVE the stall point of 0.0141).
     assert abs(uw.GRASP_VERIFY_FINGER_THRESHOLD - 0.016) < 0.001, \
         f"GRASP_VERIFY_FINGER_THRESHOLD={uw.GRASP_VERIFY_FINGER_THRESHOLD}, expected 0.016"
+    assert abs(uw.FINGER_CLOSED_JOINT - 0.012) < 0.001, \
+        f"FINGER_CLOSED_JOINT={uw.FINGER_CLOSED_JOINT}, expected 0.012"
         
     # 3.5. Actuator Kp check
     l_act_id = mujoco.mj_name2id(uw.model, mujoco.mjtObj.mjOBJ_ACTUATOR, "robot0:l_gripper_finger_joint")
@@ -67,6 +72,10 @@ def sample_valid_pos(uw):
 
 def move_arm_to_target(uw, target, tolerance=0.001, max_steps=200):
     """Moves arm directly using mocap for test setup."""
+    if hasattr(uw, "_move_mocap_to"):
+        target_quat = uw.data.mocap_quat[0].copy()
+        return uw._move_mocap_to(target, target_quat, max_steps=max_steps, tolerance=tolerance)
+
     for _ in range(max_steps):
         grip_pos = uw._utils.get_site_xpos(uw.model, uw.data, "robot0:grip")
         error = target - grip_pos
@@ -81,16 +90,16 @@ def move_arm_to_target(uw, target, tolerance=0.001, max_steps=200):
     return False
 
 def test_static_grasp(env, debug=False) -> dict:
-    """Test 1: Place arm at GRASP_Z, close fingers, check cube stability."""
+    """Test 1: Place arm at HOVER_Z, execute scripted grasp, check cube stability."""
     uw = env.unwrapped
     uw.force_scenario = "descend"
     uw.hide_object = False
     obs, _ = env.reset()
     
-    # Position arm exactly at GRASP_Z above cube center
+    # Position arm exactly at HOVER_Z above cube center. execute_grasp owns the plunge.
     cube_pos = uw.get_cube_position()
     src_xy = cube_pos[:2]
-    target = np.array([src_xy[0], src_xy[1], uw.GRASP_Z])
+    target = np.array([src_xy[0], src_xy[1], uw.HOVER_Z])
     
     moved = move_arm_to_target(uw, target)
     
@@ -101,7 +110,7 @@ def test_static_grasp(env, debug=False) -> dict:
     result = uw.execute_grasp()
     
     cube_pos_after = uw.get_cube_position()
-    expected_cube_z = 0.415  # table_z + cube_half_height
+    expected_cube_z = uw.HOVER_Z - 0.015
     cube_z_displacement = abs(cube_pos_after[2] - expected_cube_z) * 1000  # mm
     cube_xy_displacement = np.linalg.norm(cube_pos_after[:2] - src_xy) * 1000  # mm
     
@@ -128,7 +137,7 @@ def test_lift(env, debug=False) -> dict:
     
     cube_pos = uw.get_cube_position()
     src_xy = cube_pos[:2]
-    target = np.array([src_xy[0], src_xy[1], uw.GRASP_Z])
+    target = np.array([src_xy[0], src_xy[1], uw.HOVER_Z])
     move_arm_to_target(uw, target)
     
     grasp_result = uw.execute_grasp()
@@ -188,7 +197,7 @@ def test_transit_held(env, debug=False) -> dict:
     
     cube_pos = uw.get_cube_position()
     src_xy = cube_pos[:2]
-    move_arm_to_target(uw, np.array([src_xy[0], src_xy[1], uw.GRASP_Z]))
+    move_arm_to_target(uw, np.array([src_xy[0], src_xy[1], uw.HOVER_Z]))
     
     grasp_result = uw.execute_grasp()
     if not grasp_result["success"]:
@@ -205,8 +214,6 @@ def test_transit_held(env, debug=False) -> dict:
     cube_dropped = False
     drop_reason = None
     max_yaw_deg = 0.0
-    
-    import scipy.spatial.transform
     
     for _ in range(200):
         grip_pos = uw._utils.get_site_xpos(uw.model, uw.data, "robot0:grip")
@@ -232,9 +239,11 @@ def test_transit_held(env, debug=False) -> dict:
             
         # Check rotation
         quat = uw.get_cube_quat()
-        r = scipy.spatial.transform.Rotation.from_quat([quat[1], quat[2], quat[3], quat[0]])
-        euler = r.as_euler('xyz', degrees=True)
-        max_yaw_deg = max(max_yaw_deg, abs(euler[2]))
+        w, x, y, z = quat
+        siny_cosp = 2.0 * (w * z + x * y)
+        cosy_cosp = 1.0 - 2.0 * (y * y + z * z)
+        yaw_deg = math.degrees(math.atan2(siny_cosp, cosy_cosp))
+        max_yaw_deg = max(max_yaw_deg, abs(yaw_deg))
         
         if env.unwrapped.render_mode == "human":
             env.render()

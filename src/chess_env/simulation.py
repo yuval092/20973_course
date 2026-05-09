@@ -121,8 +121,9 @@ class ChessSimulationEnv(MujocoFetchPickAndPlaceEnv):
         """
         Converts the RL model output [dx, dy, dz, gripper] into MuJoCo mocap control.
         
-        The position actions are scaled to ensure smooth movement, and the orientation
-        is locked to point vertically downward.
+        The position actions are scaled to ensure smooth movement. Rotation commands
+        are zeroed, but orientation is not forcibly overwritten here; the policy may
+        keep a reachable wrist angle near board edges.
         
         Finger positions are absolutely enforced at the simulation level based on
         finger_target_joint.
@@ -134,7 +135,8 @@ class ChessSimulationEnv(MujocoFetchPickAndPlaceEnv):
         # 1. Scaled relative movement (limits max displacement per step)
         pos_ctrl *= self.POS_CTRL_SCALE
 
-        # 2. ZERO DELTA ROTATION (Maintains vertical orientation)
+        # 2. Zero delta rotation. Scripted helpers explicitly set absolute rotation
+        # when they need a vertical wrist.
         rot_ctrl = np.zeros(4)
 
         # 3. Finger Enforcement
@@ -164,9 +166,6 @@ class ChessSimulationEnv(MujocoFetchPickAndPlaceEnv):
         # Apply mocap position update
         mocap_action = np.concatenate([pos_ctrl, rot_ctrl])
         self._utils.mocap_set_action(self.model, self.data, mocap_action)
-
-        # Enforce crane mode (vertical orientation) every step
-        self._utils.set_mocap_quat(self.model, self.data, "robot0:mocap", self.VERTICAL_QUAT)
 
     def _env_setup(self, initial_qpos):
         """

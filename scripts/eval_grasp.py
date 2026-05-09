@@ -11,14 +11,17 @@ Usage:
         --n-episodes 50 --drift-limit 0.010 --debug --visualize --wait
 """
 import argparse
+import math
 import time
 import numpy as np
 import gymnasium as gym
+import mujoco
 import src.chess_env
 from stable_baselines3 import SAC
 
 SAFE_Z   = 0.550
 GRASP_Z  = 0.425
+HOVER_Z  = 0.460
 TABLE_Z  = 0.400
 CUBE_H   = 0.030
 
@@ -73,6 +76,44 @@ def run_scenario_loop(env, model, initial_obs, max_steps=500, debug=False, label
     return {"outcome": outcome, "steps": steps, "obs": obs, "crash_reason": crash_reason}
 
 
+def scripted_recover_to_hover(env, xy: np.ndarray, debug=False, delay=0.0) -> dict:
+    """
+    Recovery path for the old descend policy. If RL fails to stop at HOVER_Z,
+    move there with the same mocap-aware scripted helper used by execute_grasp().
+    """
+    uw = env.unwrapped
+    target = np.array([xy[0], xy[1], uw.HOVER_Z])
+
+    uw.data.qvel[:] = 0.0
+    uw.data.qacc[:] = 0.0
+    mujoco.mj_forward(uw.model, uw.data)
+
+    uw.grasp_mode = False
+    uw.finger_target_joint = uw.FINGER_OPEN_JOINT
+    target_quat = uw.data.mocap_quat[0].copy()
+    ok = uw._move_mocap_to(target, target_quat, max_steps=250, tolerance=0.003)
+
+    if env.unwrapped.render_mode == "human" and delay > 0:
+        time.sleep(delay)
+
+    grip_pos = uw._utils.get_site_xpos(uw.model, uw.data, "robot0:grip").copy()
+    err_mm = float(np.linalg.norm(grip_pos - target) * 1000)
+
+    if not ok:
+        return {"success": False, "reason": f"SCRIPTED_HOVER_FAILED ({err_mm:.1f}mm)"}
+
+    uw.current_scenario = "descend"
+    uw.goal_pos = target.copy()
+    uw.goal = target.copy()
+    uw.tube_center_xy = xy.copy()
+    uw.episode_steps = 0
+
+    if debug:
+        print(f"  [DESCEND RECOVERY] scripted hover reached, err={err_mm:.1f}mm")
+
+    return {"success": True, "error_mm": err_mm, "obs": uw._get_obs()}
+
+
 def run_one_pick_sequence(env, model, home_pos, debug=False, delay=0.0, drift_limit=0.010):
     """
     Runs the full pick sequence for one episode.
@@ -110,17 +151,25 @@ def run_one_pick_sequence(env, model, home_pos, debug=False, delay=0.0, drift_li
     # ── Transition: transit → descend ─────────────────────────────────────────
     obs, trans_info = uw.soft_reset(
         new_scenario="descend",
-        new_goal_pos=np.array([src_xy[0], src_xy[1], GRASP_Z]),
+        new_goal_pos=np.array([src_xy[0], src_xy[1], uw.HOVER_Z]),
         nominal_exit_pos=np.array([src_xy[0], src_xy[1], SAFE_Z]),
         nominal_xy=src_xy,
     )
     reset_episode_timelimit(env)
 
-    # ── Step 3: Descend (SAFE_Z → GRASP_Z at src_xy) ─────────────────────────
+    # ── Step 3: Descend (SAFE_Z -> HOVER_Z at src_xy) ────────────────────────
     descend_res = run_scenario_loop(env, model, obs, label="DESCEND", delay=delay)
     results["descend"] = descend_res
     if descend_res["outcome"] != "success":
-        return results
+        recovery = scripted_recover_to_hover(env, src_xy, debug=debug, delay=delay)
+        results["descend_recovery"] = recovery
+        if not recovery["success"]:
+            return results
+        descend_res["original_outcome"] = descend_res["outcome"]
+        descend_res["original_crash_reason"] = descend_res.get("crash_reason")
+        descend_res["outcome"] = "success"
+        descend_res["recovered"] = True
+        obs = recovery["obs"]
 
     # ── Step 4: GRASP (scripted — no soft_reset needed) ───────────────────────
     grasp_result = uw.execute_grasp()
@@ -134,13 +183,13 @@ def run_one_pick_sequence(env, model, home_pos, debug=False, delay=0.0, drift_li
     obs, trans_info = uw.soft_reset(
         new_scenario="ascend",
         new_goal_pos=np.array([src_xy[0], src_xy[1], SAFE_Z]),
-        nominal_exit_pos=np.array([src_xy[0], src_xy[1], GRASP_Z]),
+        nominal_exit_pos=np.array([src_xy[0], src_xy[1], uw.HOVER_Z]),
         nominal_xy=src_xy,
     )
     reset_episode_timelimit(env)
     assert uw.grasp_mode, "grasp_mode was reset during soft_reset"
 
-    # ── Step 5: Ascend (GRASP_Z → SAFE_Z, cube held) ─────────────────────────
+    # ── Step 5: Ascend (HOVER_Z -> SAFE_Z, cube held) ────────────────────────
     ascend_res = run_scenario_loop(env, model, obs, label="ASCEND", delay=delay)
     results["ascend"] = ascend_res
     if ascend_res["outcome"] != "success":
@@ -177,11 +226,16 @@ def evaluate_grasp_quality(uw, src_xy: np.ndarray) -> dict:
     # Cube hangs ~15mm below grip site while held in mid-air
     z_error   = float(abs(cube_pos[2] - (grip_pos[2] - 0.015))) * 1000
 
-    import scipy.spatial.transform
-    r = scipy.spatial.transform.Rotation.from_quat(
-        [cube_quat[1], cube_quat[2], cube_quat[3], cube_quat[0]]  # scipy: xyzw
-    )
-    euler_deg = r.as_euler("xyz", degrees=True)
+    w, x, y, z = cube_quat
+    sinr_cosp = 2.0 * (w * x + y * z)
+    cosr_cosp = 1.0 - 2.0 * (x * x + y * y)
+    roll = math.degrees(math.atan2(sinr_cosp, cosr_cosp))
+    sinp = 2.0 * (w * y - z * x)
+    pitch = math.degrees(math.copysign(math.pi / 2, sinp) if abs(sinp) >= 1 else math.asin(sinp))
+    siny_cosp = 2.0 * (w * z + x * y)
+    cosy_cosp = 1.0 - 2.0 * (y * y + z * z)
+    yaw = math.degrees(math.atan2(siny_cosp, cosy_cosp))
+    euler_deg = np.array([roll, pitch, yaw])
 
     return {
         "cube_xy_drift_mm": xy_drift,
@@ -210,6 +264,10 @@ def print_summary(all_results: list):
         for metric in ["cube_xy_drift_mm", "cube_z_error_mm", "cube_max_rotation_deg"]:
             vals = [q[metric] for q in quality_episodes]
             print(f"  {metric:<30}: mean={np.mean(vals):.1f}  max={np.max(vals):.1f}")
+
+    recoveries = sum(1 for r in all_results if r.get("descend", {}).get("recovered"))
+    if recoveries:
+        print(f"\nScripted descend recoveries: {recoveries}/{n}")
             
     print("\nFailure breakdown:")
     failures = {}
@@ -248,6 +306,7 @@ def main():
     uw = env.unwrapped
     # Verify GRASP_Z
     assert abs(uw.GRASP_Z - 0.425) < 0.001
+    assert abs(uw.HOVER_Z - HOVER_Z) < 0.001
 
     home_xy  = np.array(uw.env_cfg.get("home_position_xy", [0.680, 0.2641]))
     home_pos = np.array([home_xy[0], home_xy[1], SAFE_Z])

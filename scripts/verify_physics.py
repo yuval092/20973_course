@@ -152,6 +152,8 @@ def verify_grasp_xml_changes(debug=False):
         # 4. GRASP_Z
         print(f"  - GRASP_Z: {uw.GRASP_Z:.3f}m")
         assert abs(uw.GRASP_Z - 0.425) < 0.001, f"Expected 0.425, got {uw.GRASP_Z:.3f}"
+        print(f"  - HOVER_Z: {uw.HOVER_Z:.3f}m")
+        assert abs(uw.HOVER_Z - 0.460) < 0.001, f"Expected 0.460, got {uw.HOVER_Z:.3f}"
         
         env.close()
         return True

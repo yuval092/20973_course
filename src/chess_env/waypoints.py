@@ -10,16 +10,17 @@ from src.utils.config import load_config
 _cfg = load_config("env")
 SAFE_Z  = _cfg["safe_z"]    # 0.550m
 GRASP_Z = _cfg["grasp_z"]   # 0.430m
+HOVER_Z = _cfg.get("hover_z", 0.460)
 
 SCENARIO_EXIT_Z = {
     "transit": SAFE_Z,
-    "descend": GRASP_Z,
+    "descend": HOVER_Z,
     "ascend":  SAFE_Z,
 }
 SCENARIO_ENTRY_Z = {
     "transit": SAFE_Z,
     "descend": SAFE_Z,
-    "ascend":  GRASP_Z,
+    "ascend":  HOVER_Z,
 }
 
 VALID_TRANSITIONS = {
@@ -66,7 +67,7 @@ def derive_goal_pos(scenario: str, cell_xy: np.ndarray) -> np.ndarray:
     Raises:
         ValueError: If the scenario is unknown.
     """
-    z_map = {"transit": SAFE_Z, "descend": GRASP_Z, "ascend": SAFE_Z}
+    z_map = {"transit": SAFE_Z, "descend": HOVER_Z, "ascend": SAFE_Z}
     if scenario not in z_map:
         raise ValueError(f"Unknown scenario: {scenario}")
     return np.array([cell_xy[0], cell_xy[1], z_map[scenario]])

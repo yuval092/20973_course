@@ -66,6 +66,7 @@ class ChessTaskEnv(ChessSimulationEnv):
         self.CUBE_HEIGHT = self.env_cfg["cube_height"]
         self.CUBE_Z = self.env_cfg["cube_z"]
         self.GRASP_Z = self.env_cfg["grasp_z"]
+        self.HOVER_Z = self.env_cfg.get("hover_z", 0.460)
         self.SAFE_Z = self.env_cfg["safe_z"]
         self.SUCCESS_THRESHOLD = self.env_cfg["success_threshold"]
         self.SUCCESS_BONUS = self.env_cfg["success_bonus"]
@@ -91,6 +92,7 @@ class ChessTaskEnv(ChessSimulationEnv):
         self.DIST_REWARD_WEIGHT = self.env_cfg["dist_reward_weight"]
         self.SETTLE_STEPS_FINAL = self.physics_cfg["settle_steps_final"]
         self.HALT_VEL_THRESHOLD = self.env_cfg.get("halt_vel_threshold", 0.0005)
+        self.TUBE_BREACH_GRACE = self.env_cfg.get("tube_breach_grace", 0.003)
 
         # --- Actuator Enforcement ---
         self.FINGER_OPEN_JOINT = self.env_cfg["finger_open_joint"]
@@ -100,6 +102,7 @@ class ChessTaskEnv(ChessSimulationEnv):
 
         # --- Grasp Stage State ---
         self.grasp_mode = False
+        self.keep_fingers_open = False
         
         # Home Position
         home_xy = self.env_cfg.get("home_position_xy", [0.680, 0.2641])
@@ -308,6 +311,7 @@ class ChessTaskEnv(ChessSimulationEnv):
 
         # NEW: reset grasp mode on every reset
         self.grasp_mode = False
+        self.keep_fingers_open = False
 
         start_pos = self._sample_board_position()
         start_xy = start_pos[:2]
@@ -329,10 +333,10 @@ class ChessTaskEnv(ChessSimulationEnv):
         elif self.current_scenario == "descend":
             self.tube_center_xy = start_xy.copy()
             arm_start_pos = np.array([start_xy[0], start_xy[1], self.SAFE_Z])
-            self.goal_pos = np.array([start_xy[0], start_xy[1], self.GRASP_Z])
+            self.goal_pos = np.array([start_xy[0], start_xy[1], self.HOVER_Z])
         elif self.current_scenario == "ascend":
             self.tube_center_xy = start_xy.copy()
-            arm_start_pos = np.array([start_xy[0], start_xy[1], self.GRASP_Z])
+            arm_start_pos = np.array([start_xy[0], start_xy[1], self.HOVER_Z])
             self.goal_pos = np.array([start_xy[0], start_xy[1], self.SAFE_Z])
 
         # Reset parent simulation
@@ -452,21 +456,43 @@ class ChessTaskEnv(ChessSimulationEnv):
         if nominal_exit_pos is not None:
             result["error_from_nominal_mm"] = float(np.linalg.norm(grip_pos - nominal_exit_pos) * 1000)
         return result
+    def _assert_mocap_target(self, target_grip_pos: np.ndarray, target_quat: np.ndarray) -> None:
+        """Set mocap so the grip site, not the mocap body origin, reaches target."""
+        grip_pos = self._utils.get_site_xpos(self.model, self.data, "robot0:grip")
+        mocap_offset = self.data.mocap_pos[0].copy() - grip_pos
+        self.data.mocap_pos[0][:3] = target_grip_pos + mocap_offset
+        self.data.mocap_quat[0][:] = target_quat
+
+    def _move_mocap_to(self, target_pos: np.ndarray, target_quat: np.ndarray,
+                       max_steps: int = 80, tolerance: float = 0.001) -> bool:
+        """
+        Drive the physical gripper to an absolute mocap position/quaternion.
+
+        _set_action resets mocap to the current body pose before applying deltas,
+        so scripted absolute targets must be reasserted after every _set_action.
+        """
+        zero_action = np.zeros(4)
+        for _ in range(max_steps):
+            grip_pos = self._utils.get_site_xpos(self.model, self.data, "robot0:grip")
+            if np.linalg.norm(grip_pos - target_pos) < tolerance:
+                return True
+            self._set_action(zero_action)
+            self._assert_mocap_target(target_pos, target_quat)
+            self._mujoco_step(None)
+            if self.render_mode == "human":
+                self.render()
+
+        grip_pos = self._utils.get_site_xpos(self.model, self.data, "robot0:grip")
+        return bool(np.linalg.norm(grip_pos - target_pos) < tolerance)
+
     def execute_grasp(self) -> dict:
         """
-        Scripted GRASP phase. Executes immediately after DESCEND success.
-        Returns a plain dict (NOT a dataclass). All call sites use result["success"].
-        
-        Phases:
-          0: Zero velocity (IMMEDIATELY) + short settle (15 steps)
-          0.5: Pre-conditions + cube sanity + cube rotation check
-          1: Contact Approach (fine-descent to GRASP_Z, 1mm/step)
-          2: Finger Close (actuator-driven, 150 steps, with early-abort)
-          3: Hold Settle (50 steps)
-          4: Final Verification
+        Scripted GRASP pipeline. Runs after DESCEND succeeds at HOVER_Z.
+        The arm exits at HOVER_Z with the cube held and grasp_mode=True.
         """
-        ROBOT_DOF = 15
-        dummy_action = np.zeros(4)
+        import math
+
+        zero_action = np.zeros(4)
         result = {
             "success": False,
             "reason": None,
@@ -478,129 +504,132 @@ class ChessTaskEnv(ChessSimulationEnv):
             "final_finger_pos": 0.0,
             "close_steps_used": 0,
         }
-        
-        # ── Phase 0: ZERO VELOCITY FIRST, then short settle ──────────────────
-        # CRITICAL: Zero qvel/qacc BEFORE running any steps. The arm arrives with
-        # residual velocity from the RL policy. Running 50 simulation steps BEFORE
-        # zeroing velocity causes the arm to oscillate near GRASP_Z, triggering
-        # proximity contact explosions that launch the cube (~5% of full pipeline).
-        # By zeroing first, the arm is stationary from step 1 of settle.
-        self.data.qvel[:ROBOT_DOF] = 0.0
-        self.data.qacc[:ROBOT_DOF] = 0.0
+
+        # Phase 0: halt and settle at the RL handoff pose.
+        self.data.qvel[:] = 0.0
+        self.data.qacc[:] = 0.0
         mujoco.mj_forward(self.model, self.data)
-        
-        zero_action = np.zeros(4)
-        for _ in range(15):  # Short settle (arm already stationary — just equilibrate weld)
+
+        settle_pos = self._utils.get_site_xpos(self.model, self.data, "robot0:grip").copy()
+        settle_quat = self.data.mocap_quat[0].copy()
+        for _ in range(15):
             self._set_action(zero_action)
+            self._assert_mocap_target(settle_pos, settle_quat)
             self._mujoco_step(None)
-        
-        # ── Precondition Checks ───────────────────────────────────────────────
+            if self.render_mode == "human":
+                self.render()
+
         grip_vel = self._utils.get_site_xvelp(self.model, self.data, "robot0:grip")
         speed = float(np.linalg.norm(grip_vel))
-        if speed > 0.005:  # > 5mm/s after halt — something is wrong
+        if speed > 0.005:
             result["reason"] = f"PRECONDITION_SPEED ({speed*1000:.2f}mm/s after halt)"
             return result
-        
+
         grip_pos = self._utils.get_site_xpos(self.model, self.data, "robot0:grip").copy()
-        if abs(grip_pos[2] - self.GRASP_Z) > 0.010:
-            result["reason"] = f"PRECONDITION_Z (grip at {grip_pos[2]*1000:.1f}mm, GRASP_Z={self.GRASP_Z*1000:.1f}mm)"
+        if abs(grip_pos[2] - self.HOVER_Z) > 0.015:
+            result["reason"] = (
+                f"PRECONDITION_Z (grip={grip_pos[2]*1000:.1f}mm, "
+                f"HOVER_Z={self.HOVER_Z*1000:.1f}mm)"
+            )
             return result
-        
-        cube_pos = self.get_cube_position()
-        result["pre_grasp_cube_xy"] = cube_pos[:2].copy()
-        xy_to_cube = np.linalg.norm(cube_pos[:2] - grip_pos[:2])
-        if xy_to_cube > 0.010:
-            result["reason"] = f"PRECONDITION_XY (cube is {xy_to_cube*1000:.1f}mm from grip site)"
-            return result
-        
+
         l_finger = self._utils.get_joint_qpos(self.model, self.data, "robot0:l_gripper_finger_joint").item()
-        if l_finger < self.FINGER_OPEN_JOINT - 0.002:
+        if l_finger < self.FINGER_OPEN_JOINT - 0.003:
             result["reason"] = f"PRECONDITION_FINGERS_NOT_OPEN (finger={l_finger:.4f})"
             return result
-        
-        # ── Sub-Phase 1: Contact Approach (Fine-Descent) ──────────────────────
-        # CRITICAL: DO NOT SKIP THIS PHASE. DESCEND success threshold is 10mm, so
-        # the arm can succeed at GRASP_Z + 9mm = 0.434m. Without fine-descent, the
-        # cube overlap is only 48% instead of 78%, reducing pipeline grasp success
-        # from ~84% to ~78%. This phase is the single most impactful step.
-        #
-        # CRITICAL ORDER: _set_action calls mocap_set_action → reset_mocap2body_xpos,
-        # which resets mocap_pos to the current body position (erasing any direct
-        # modification). step_vec MUST be applied AFTER _set_action or it will be
-        # silently erased before the physics step.
-        # Correct order: (1) _set_action(zero_action), (2) mocap_pos += step_vec, (3) _mujoco_step()
-        target_z = self.GRASP_Z
-        grip_pos = self._utils.get_site_xpos(self.model, self.data, "robot0:grip").copy()
-        if abs(grip_pos[2] - target_z) > self.GRASP_CONTACT_APPROACH_TOLERANCE:
-            fine_target = np.array([grip_pos[0], grip_pos[1], target_z])
-            for _ in range(50):
-                grip_pos_now = self._utils.get_site_xpos(self.model, self.data, "robot0:grip")
-                error = fine_target - grip_pos_now
-                if np.linalg.norm(error) < self.GRASP_CONTACT_APPROACH_TOLERANCE:
-                    break
-                step_vec = 0.5 * error
-                if np.linalg.norm(step_vec) > 0.003:
-                    step_vec = step_vec / np.linalg.norm(step_vec) * 0.003  # 3mm/step max
-                # CRITICAL ORDER: _set_action calls mocap_set_action → reset_mocap2body_xpos,
-                # which resets mocap_pos to the current *body* position (erasing any direct
-                # modification). step_vec MUST be applied AFTER _set_action or it will be
-                # silently erased before the physics step, causing the arm to never move.
-                self._set_action(zero_action)           # 1. Reset mocap_pos → body pos
-                self.data.mocap_pos[0][:3] += step_vec  # 2. Add step_vec on top
-                self._mujoco_step(None)                 # 3. Physics sees correct target
-            else:
-                grip_pos_now = self._utils.get_site_xpos(self.model, self.data, "robot0:grip")
-                if abs(grip_pos_now[2] - target_z) > 0.005:
-                    result["reason"] = f"CONTACT_APPROACH_FAILED (z_err={abs(grip_pos_now[2]-target_z)*1000:.1f}mm)"
-                    return result
-        
-        # ── Sub-Phase 2: Finger Close (Actuator-Driven) ────────────────────────
-        self.grasp_mode = True
-        self.finger_target_joint = self.FINGER_CLOSED_JOINT
-        close_steps = 0
-        
-        for step in range(self.GRASP_CLOSE_STEPS):
+
+        # Phase 1+2: reject dangerous cube rotation, then align and verticalize.
+        cube_pos = self.get_cube_position()
+        result["pre_grasp_cube_xy"] = cube_pos[:2].copy()
+
+        cube_quat = self.get_cube_quat()
+        w, x, y, z = cube_quat
+        siny_cosp = 2.0 * (w * z + x * y)
+        cosy_cosp = 1.0 - 2.0 * (y * y + z * z)
+        yaw = abs(math.atan2(siny_cosp, cosy_cosp))
+        yaw_modulo = yaw % (math.pi / 2)
+        effective_yaw = min(yaw_modulo, (math.pi / 2) - yaw_modulo)
+        if effective_yaw > math.radians(25.0):
+            result["reason"] = f"CUBE_ROTATED (yaw={math.degrees(effective_yaw):.1f}deg)"
+            return result
+
+        align_target = np.array([cube_pos[0], cube_pos[1], self.HOVER_Z])
+        grasp_quat = self.VERTICAL_QUAT
+        if not self._move_mocap_to(align_target, self.VERTICAL_QUAT, max_steps=250, tolerance=0.002):
+            grip_after_align = self._utils.get_site_xpos(self.model, self.data, "robot0:grip").copy()
+            align_error = float(np.linalg.norm(grip_after_align - align_target))
+            if align_error > 0.010:
+                result["reason"] = f"ROTATION_FAILED (align_error={align_error*1000:.1f}mm)"
+                return result
+            grasp_quat = self.data.mocap_quat[0].copy()
+
+        # Phase 3: plunge from HOVER_Z to GRASP_Z as a vertical piston.
+        plunge_target = np.array([cube_pos[0], cube_pos[1], self.HOVER_Z])
+        for _ in range(int(round((self.HOVER_Z - self.GRASP_Z) / 0.001)) + 15):
+            grip_now = self._utils.get_site_xpos(self.model, self.data, "robot0:grip")
+            if grip_now[2] <= self.GRASP_Z + 0.001:
+                break
+            plunge_target[2] = max(self.GRASP_Z, plunge_target[2] - 0.001)
             self._set_action(zero_action)
+            self._assert_mocap_target(plunge_target, grasp_quat)
+            self._mujoco_step(None)
+            if self.render_mode == "human":
+                self.render()
+
+        grip_pos = self._utils.get_site_xpos(self.model, self.data, "robot0:grip").copy()
+        if abs(grip_pos[2] - self.GRASP_Z) > 0.008:
+            result["reason"] = (
+                f"PLUNGE_FAILED (z={grip_pos[2]*1000:.1f}mm, "
+                f"target={self.GRASP_Z*1000:.1f}mm)"
+            )
+            return result
+
+        # Phase 4: ramp finger target closed with contact physics enabled.
+        self.grasp_mode = True
+        close_target = plunge_target.copy()
+        ramp_start = self.FINGER_OPEN_JOINT
+        ramp_end = self.FINGER_CLOSED_JOINT
+        ramp_delta = (ramp_start - ramp_end) / self.GRASP_CLOSE_STEPS
+        close_steps = 0
+        for step in range(self.GRASP_CLOSE_STEPS):
+            self.finger_target_joint = max(ramp_end, ramp_start - ramp_delta * step)
+            self._set_action(zero_action)
+            self._assert_mocap_target(close_target, grasp_quat)
             self._mujoco_step(None)
             close_steps += 1
-            
+            if self.render_mode == "human":
+                self.render()
+
             if step % 10 == 0:
                 cube_now = self.get_cube_position()
                 if cube_now[2] > self.GRASP_Z + 0.050:
-                    result["reason"] = f"CUBE_EXPLOSION_DURING_CLOSE (cube_z={cube_now[2]*1000:.1f}mm)"
+                    result["reason"] = f"CUBE_EXPLOSION (z={cube_now[2]*1000:.1f}mm)"
                     return result
-            
-            # Early-abort FINGER_CLOSED_EMPTY: if fingers nearly fully closed after >30 steps
-            # with no cube resistance, the cube is not in the finger path → abort immediately.
-            # Without early abort, the full 150 steps elapse uselessly.
-            if step > 30:
-                l_finger_now = self._utils.get_joint_qpos(
-                    self.model, self.data, "robot0:l_gripper_finger_joint"
-                ).item()
-                if l_finger_now < 0.003:  # Fingers closed fully — no cube contact
-                    result["reason"] = f"FINGER_CLOSED_EMPTY_EARLY (finger={l_finger_now:.4f} after {step} steps)"
-                    result["close_steps_used"] = step + 1
-                    return result
-            
-            # NOTE: fingers WITH cube stall at j≈0.0143, never reach 0.012 or below.
-        
+
+        self.finger_target_joint = ramp_end
         result["close_steps_used"] = close_steps
-        
-        # ── Sub-Phase 3: Grasp Verification ───────────────────────────────────
+
+        # Phase 5: hold and verify.
+        for _ in range(self.GRASP_HOLD_STEPS):
+            self._set_action(zero_action)
+            self._assert_mocap_target(close_target, grasp_quat)
+            self._mujoco_step(None)
+            if self.render_mode == "human":
+                self.render()
+
         cube_pos = self.get_cube_position()
         grip_pos = self._utils.get_site_xpos(self.model, self.data, "robot0:grip").copy()
         l_finger = self._utils.get_joint_qpos(self.model, self.data, "robot0:l_gripper_finger_joint").item()
-        
+
         xy_error = float(np.linalg.norm(cube_pos[:2] - grip_pos[:2])) * 1000
-        # Z check: cube is on table during grasp (CoM ≈ 0.415m), grip site at GRASP_Z=0.425.
-        # Gap is ~10mm. GRASP_VERIFY_Z_THRESHOLD=20mm covers this. Do NOT use (grip_pos[2]-0.015)
-        # here — the 15mm hang only occurs when cube is in mid-air, not resting on table.
-        z_error  = float(abs(cube_pos[2] - grip_pos[2])) * 1000
-        
+        z_error = float(abs(cube_pos[2] - grip_pos[2])) * 1000
+
+        result["post_grasp_cube_pos"] = cube_pos.copy()
+        result["post_grasp_cube_quat"] = self.get_cube_quat().copy()
         result["final_xy_error_mm"] = xy_error
         result["final_z_error_mm"] = z_error
         result["final_finger_pos"] = l_finger
-        
+
         if xy_error > self.GRASP_VERIFY_XY_THRESHOLD * 1000:
             result["reason"] = f"VERIFY_XY_FAILED ({xy_error:.1f}mm > {self.GRASP_VERIFY_XY_THRESHOLD*1000:.0f}mm)"
             return result
@@ -608,25 +637,153 @@ class ChessTaskEnv(ChessSimulationEnv):
             result["reason"] = f"VERIFY_Z_FAILED ({z_error:.1f}mm > {self.GRASP_VERIFY_Z_THRESHOLD*1000:.0f}mm)"
             return result
         if l_finger > self.GRASP_VERIFY_FINGER_THRESHOLD:
-            result["reason"] = f"VERIFY_FINGERS_FAILED (finger={l_finger:.4f} > threshold={self.GRASP_VERIFY_FINGER_THRESHOLD})"
+            result["reason"] = f"VERIFY_FINGERS_TOO_OPEN (finger={l_finger:.4f} > threshold={self.GRASP_VERIFY_FINGER_THRESHOLD})"
             return result
-        
-        # ── Sub-Phase 4: Hold Settle ───────────────────────────────────────────
-        for _ in range(self.GRASP_HOLD_STEPS):
+
+        # Phase 6: retract back to HOVER_Z before handing control to RL.
+        retract_target = close_target.copy()
+        for _ in range(int(round((self.HOVER_Z - self.GRASP_Z) / 0.001)) + 15):
+            grip_now = self._utils.get_site_xpos(self.model, self.data, "robot0:grip")
+            if grip_now[2] >= self.HOVER_Z - 0.001:
+                break
+            retract_target[2] = min(self.HOVER_Z, retract_target[2] + 0.001)
             self._set_action(zero_action)
+            self._assert_mocap_target(retract_target, grasp_quat)
             self._mujoco_step(None)
-        
-        cube_pos_final = self.get_cube_position()
-        grip_pos_final = self._utils.get_site_xpos(self.model, self.data, "robot0:grip").copy()
-        final_xy = float(np.linalg.norm(cube_pos_final[:2] - grip_pos_final[:2])) * 1000
-        
-        if final_xy > self.GRASP_VERIFY_XY_THRESHOLD * 1000:
-            result["reason"] = f"CUBE_DRIFTED_AFTER_HOLD ({final_xy:.1f}mm)"
-            return result
-        
+            if self.render_mode == "human":
+                self.render()
+
+            cube_now = self.get_cube_position()
+            grip_now = self._utils.get_site_xpos(self.model, self.data, "robot0:grip")
+            if abs(cube_now[2] - (grip_now[2] - 0.015)) > self.CUBE_HELD_Z_LIMIT:
+                result["reason"] = "CUBE_DROPPED_DURING_RETRACT"
+                return result
+
         result["success"] = True
-        result["post_grasp_cube_pos"] = cube_pos_final.tolist()
-        result["post_grasp_cube_quat"] = self.get_cube_quat().tolist()
+        result["post_grasp_cube_pos"] = self.get_cube_position().copy()
+        result["post_grasp_cube_quat"] = self.get_cube_quat().copy()
+        return result
+
+    def execute_place(self, dst_xy: np.ndarray) -> dict:
+        """
+        Scripted PLACE pipeline. Runs after DESCEND succeeds at HOVER_Z over the
+        destination. The arm exits at HOVER_Z with the cube released.
+        """
+        zero_action = np.zeros(4)
+        result = {
+            "success": False,
+            "reason": None,
+            "final_cube_pos": None,
+            "final_xy_error_mm": 0.0,
+        }
+
+        self.data.qvel[:] = 0.0
+        self.data.qacc[:] = 0.0
+        mujoco.mj_forward(self.model, self.data)
+
+        settle_pos = self._utils.get_site_xpos(self.model, self.data, "robot0:grip").copy()
+        settle_quat = self.data.mocap_quat[0].copy()
+        for _ in range(15):
+            self._set_action(zero_action)
+            self._assert_mocap_target(settle_pos, settle_quat)
+            self._mujoco_step(None)
+            if self.render_mode == "human":
+                self.render()
+
+        grip_vel = self._utils.get_site_xvelp(self.model, self.data, "robot0:grip")
+        if float(np.linalg.norm(grip_vel)) > 0.005:
+            result["reason"] = "PRECONDITION_SPEED"
+            return result
+
+        grip_pos = self._utils.get_site_xpos(self.model, self.data, "robot0:grip").copy()
+        if abs(grip_pos[2] - self.HOVER_Z) > 0.015:
+            result["reason"] = f"PRECONDITION_Z (grip={grip_pos[2]*1000:.1f}mm)"
+            return result
+
+        align_target = np.array([dst_xy[0], dst_xy[1], self.HOVER_Z])
+        place_quat = self.VERTICAL_QUAT
+        if not self._move_mocap_to(align_target, self.VERTICAL_QUAT, max_steps=250, tolerance=0.002):
+            grip_after_align = self._utils.get_site_xpos(self.model, self.data, "robot0:grip").copy()
+            align_error = float(np.linalg.norm(grip_after_align - align_target))
+            if align_error > 0.010:
+                result["reason"] = f"ROTATION_FAILED (align_error={align_error*1000:.1f}mm)"
+                return result
+            place_quat = self.data.mocap_quat[0].copy()
+
+        place_z = self.GRASP_Z
+        plunge_target = np.array([dst_xy[0], dst_xy[1], self.HOVER_Z])
+        for _ in range(int(round((self.HOVER_Z - place_z) / 0.001)) + 15):
+            grip_pos = self._utils.get_site_xpos(self.model, self.data, "robot0:grip")
+            if grip_pos[2] <= place_z + 0.001:
+                break
+            plunge_target[2] = max(place_z, plunge_target[2] - 0.001)
+            self._set_action(zero_action)
+            self._assert_mocap_target(plunge_target, place_quat)
+            self._mujoco_step(None)
+            if self.render_mode == "human":
+                self.render()
+
+        grip_pos = self._utils.get_site_xpos(self.model, self.data, "robot0:grip").copy()
+        if abs(grip_pos[2] - place_z) > 0.008:
+            result["reason"] = (
+                f"PLUNGE_FAILED (z={grip_pos[2]*1000:.1f}mm, "
+                f"target={place_z*1000:.1f}mm)"
+            )
+            return result
+
+        release_target = plunge_target.copy()
+        ramp_start = self.FINGER_CLOSED_JOINT
+        ramp_end = self.FINGER_OPEN_JOINT
+        release_steps = 80
+        ramp_delta = (ramp_end - ramp_start) / release_steps
+
+        for step in range(release_steps):
+            self.finger_target_joint = min(ramp_end, ramp_start + ramp_delta * step)
+            self._set_action(zero_action)
+            self._assert_mocap_target(release_target, place_quat)
+            self._mujoco_step(None)
+            if self.render_mode == "human":
+                self.render()
+
+        self.finger_target_joint = self.FINGER_OPEN_JOINT
+        for _ in range(30):
+            self._set_action(zero_action)
+            self._assert_mocap_target(release_target, place_quat)
+            self._mujoco_step(None)
+            if self.render_mode == "human":
+                self.render()
+
+        cube_pos = self.get_cube_position()
+        xy_error = float(np.linalg.norm(cube_pos[:2] - dst_xy[:2])) * 1000
+        z_error = float(abs(cube_pos[2] - (self.TABLE_Z + self.CUBE_HEIGHT / 2.0))) * 1000
+
+        result["final_cube_pos"] = cube_pos.copy()
+        result["final_xy_error_mm"] = xy_error
+
+        if xy_error > 20.0:
+            result["reason"] = f"PLACE_XY_FAILED ({xy_error:.1f}mm drift from target)"
+            return result
+        if z_error > 10.0:
+            result["reason"] = f"PLACE_Z_FAILED ({z_error:.1f}mm cube not flat on table)"
+            return result
+
+        self.grasp_mode = False
+        self.keep_fingers_open = True
+
+        retract_target = release_target.copy()
+        for _ in range(int(round((self.HOVER_Z - place_z) / 0.001)) + 15):
+            grip_pos = self._utils.get_site_xpos(self.model, self.data, "robot0:grip")
+            if grip_pos[2] >= self.HOVER_Z - 0.001:
+                break
+            retract_target[2] = min(self.HOVER_Z, retract_target[2] + 0.001)
+            self._set_action(zero_action)
+            self._assert_mocap_target(retract_target, place_quat)
+            self._mujoco_step(None)
+            if self.render_mode == "human":
+                self.render()
+
+        result["success"] = True
+        self.current_scenario = "place"
         return result
 
     def soft_reset(self, new_scenario: str, new_goal_pos: np.ndarray,
@@ -790,7 +947,9 @@ class ChessTaskEnv(ChessSimulationEnv):
         self.episode_steps += 1
         
         # 1. State Machine Enforcement
-        if self.current_scenario == "descend" and not self.grasp_mode:
+        if self.keep_fingers_open:
+            self.finger_target_joint = self.FINGER_OPEN_JOINT
+        elif self.current_scenario == "descend" and not self.grasp_mode:
             self.finger_target_joint = self.FINGER_OPEN_JOINT
         elif self.current_scenario != "descend":
             self.finger_target_joint = self.FINGER_CLOSED_JOINT
@@ -845,9 +1004,12 @@ class ChessTaskEnv(ChessSimulationEnv):
             
             # The curriculum drift limit now governs the center.
             # Footprint check is implicitly governed by curriculum.
-            if drift > current_drift_limit:
+            if drift > current_drift_limit + self.TUBE_BREACH_GRACE:
                 crashed = True
-                crash_reason = f"TUBE_BREACH (center={drift:.4f} > limit={current_drift_limit:.4f})"
+                crash_reason = (
+                    f"TUBE_BREACH (center={drift:.4f} > "
+                    f"limit={current_drift_limit:.4f}+grace={self.TUBE_BREACH_GRACE:.4f})"
+                )
             elif gripper_pos[2] < self.TABLE_SURFACE_Z:
                 crashed = True
                 crash_reason = f"TABLE_HIT (z={gripper_pos[2]:.4f} < surface={self.TABLE_SURFACE_Z:.4f})"

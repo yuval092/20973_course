@@ -21,7 +21,7 @@
 
 		<body name="object0" pos="0.01 0.01 0.01">
 			<joint name="object0:joint" type="free" damping="0.1"></joint>
-			<geom size="0.015 0.015 0.015" type="box" condim="4" name="object0" material="block_mat" mass="0.5" friction="2.0 0.5 0.01"></geom>
+			<geom size="0.015 0.015 0.015" type="box" condim="6" name="object0" material="block_mat" mass="0.05" friction="2.0 0.005 0.0001" solref="0.002 1" solimp="0.99 0.999 0.001"></geom>
 			<site name="object0" pos="0 0 0" size="0.015 0.015 0.015" rgba="1 0 0 1" type="sphere"></site>
 		</body>
 
@@ -29,7 +29,7 @@
 	</worldbody>
 
 	<actuator>
-		<position ctrllimited="true" ctrlrange="0 0.2" joint="robot0:l_gripper_finger_joint" kp="60000" name="robot0:l_gripper_finger_joint" user="1"></position>
-		<position ctrllimited="true" ctrlrange="0 0.2" joint="robot0:r_gripper_finger_joint" kp="60000" name="robot0:r_gripper_finger_joint" user="1"></position>
+		<position ctrllimited="true" ctrlrange="0 0.05" joint="robot0:l_gripper_finger_joint" kp="150000" name="robot0:l_gripper_finger_joint" user="1"></position>
+		<position ctrllimited="true" ctrlrange="0 0.05" joint="robot0:r_gripper_finger_joint" kp="150000" name="robot0:r_gripper_finger_joint" user="1"></position>
 	</actuator>
 </mujoco>
