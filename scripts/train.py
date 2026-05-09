@@ -16,6 +16,22 @@ def main():
     parser.add_argument("--config", type=str, help="Path to config file (optional).")
     parser.add_argument("--debug", action="store_true", help="Enable debug logging in the environment.")
     parser.add_argument("--fixed-drift", action="store_true", help="Bypass the horizontal drift curriculum and lock the constraint to the final 5mm radius.")
+    parser.add_argument(
+        "--finetune",
+        action="store_true",
+        help="Continue the loaded model timestep counter, so pretrained policy actions are used immediately.",
+    )
+    parser.add_argument(
+        "--keep-entropy",
+        action="store_true",
+        help="Keep the loaded SAC entropy coefficient for conservative fine-tuning.",
+    )
+    parser.add_argument(
+        "--scenario",
+        choices=["transit", "descend", "ascend", "all"],
+        default="all",
+        help="Focus training on one movement scenario. Use 'descend' to fine-tune HOVER_Z descent.",
+    )
     
     args = parser.parse_args()
     
@@ -23,7 +39,16 @@ def main():
     # If we wanted to support a custom --config path for YAMLs, we'd need to modify load_config.
     # For now, we follow the trainer's internal config loading.
     
-    trainer = SACTrainer(num_envs=args.envs, fresh_start=args.fresh, debug=args.debug, fixed_drift=args.fixed_drift)
+    scenario = None if args.scenario == "all" else args.scenario
+    trainer = SACTrainer(
+        num_envs=args.envs,
+        fresh_start=args.fresh,
+        debug=args.debug,
+        fixed_drift=args.fixed_drift,
+        scenario=scenario,
+        reset_num_timesteps=not args.finetune,
+        reset_entropy=not args.keep_entropy,
+    )
     
     if args.timesteps:
         trainer.total_timesteps = args.timesteps

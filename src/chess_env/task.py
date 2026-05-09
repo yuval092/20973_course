@@ -1,5 +1,6 @@
 import logging
 import os
+import time
 import mujoco
 import numpy as np
 from src.chess_env.simulation import ChessSimulationEnv
@@ -485,6 +486,36 @@ class ChessTaskEnv(ChessSimulationEnv):
         grip_pos = self._utils.get_site_xpos(self.model, self.data, "robot0:grip")
         return bool(np.linalg.norm(grip_pos - target_pos) < tolerance)
 
+    def _render_transition_frame(self) -> None:
+        """Render scripted transition frames when using the human viewer."""
+        if self.render_mode == "human":
+            self.render()
+            delay = getattr(self, "transition_render_delay", 0.0)
+            if delay > 0:
+                time.sleep(delay)
+
+    def _smooth_fingers_to(self, target_joint: float, steps: int = 50) -> None:
+        """
+        Move fingers through visible intermediate positions.
+
+        Non-grasp movement phases still use direct finger-position enforcement for
+        stability, but this avoids a one-frame snap when switching open/closed.
+        """
+        start_joint = self._utils.get_joint_qpos(
+            self.model, self.data, "robot0:l_gripper_finger_joint"
+        ).item()
+        dummy_action = np.zeros(4)
+
+        for i in range(1, steps + 1):
+            alpha = i / steps
+            alpha = alpha * alpha * (3.0 - 2.0 * alpha)
+            self.finger_target_joint = start_joint + (target_joint - start_joint) * alpha
+            self._set_action(dummy_action)
+            self._mujoco_step(None)
+            self._render_transition_frame()
+
+        self.finger_target_joint = target_joint
+
     def execute_grasp(self) -> dict:
         """
         Scripted GRASP pipeline. Runs after DESCEND succeeds at HOVER_Z.
@@ -558,7 +589,7 @@ class ChessTaskEnv(ChessSimulationEnv):
         if not self._move_mocap_to(align_target, self.VERTICAL_QUAT, max_steps=250, tolerance=0.002):
             grip_after_align = self._utils.get_site_xpos(self.model, self.data, "robot0:grip").copy()
             align_error = float(np.linalg.norm(grip_after_align - align_target))
-            if align_error > 0.010:
+            if align_error > self.GRASP_VERIFY_XY_THRESHOLD:
                 result["reason"] = f"ROTATION_FAILED (align_error={align_error*1000:.1f}mm)"
                 return result
             grasp_quat = self.data.mocap_quat[0].copy()
@@ -705,7 +736,7 @@ class ChessTaskEnv(ChessSimulationEnv):
         if not self._move_mocap_to(align_target, self.VERTICAL_QUAT, max_steps=250, tolerance=0.002):
             grip_after_align = self._utils.get_site_xpos(self.model, self.data, "robot0:grip").copy()
             align_error = float(np.linalg.norm(grip_after_align - align_target))
-            if align_error > 0.010:
+            if align_error > self.GRASP_VERIFY_XY_THRESHOLD:
                 result["reason"] = f"ROTATION_FAILED (align_error={align_error*1000:.1f}mm)"
                 return result
             place_quat = self.data.mocap_quat[0].copy()
@@ -752,6 +783,8 @@ class ChessTaskEnv(ChessSimulationEnv):
             self._mujoco_step(None)
             if self.render_mode == "human":
                 self.render()
+
+        self.grasp_mode = False
 
         cube_pos = self.get_cube_position()
         xy_error = float(np.linalg.norm(cube_pos[:2] - dst_xy[:2])) * 1000
@@ -802,9 +835,9 @@ class ChessTaskEnv(ChessSimulationEnv):
         ROBOT_DOF = 15
         HALT_HOLD_MAX_STEPS = 100
         ALIGN_TOLERANCE_M = 0.003
-        ALIGN_MAX_STEPS = 200
-        ALIGN_GAIN = 0.8
-        ALIGN_MAX_STEP_M = 0.005
+        ALIGN_MAX_STEPS = 400
+        ALIGN_GAIN = 0.35
+        ALIGN_MAX_STEP_M = 0.002
 
         # Phase 1: Halt (Driving arm to a dead stop)
         zero_action = np.zeros(4)
@@ -815,6 +848,7 @@ class ChessTaskEnv(ChessSimulationEnv):
                 break
             self._set_action(zero_action)
             self._mujoco_step(None)
+            self._render_transition_frame()
             halt_steps += 1
 
         # Active velocity zeroing (Robot only, preserves object physics)
@@ -850,6 +884,7 @@ class ChessTaskEnv(ChessSimulationEnv):
                 step_vec = step_vec / np.linalg.norm(step_vec) * ALIGN_MAX_STEP_M
             self.data.mocap_pos[0][:3] += step_vec
             self._mujoco_step(None)
+            self._render_transition_frame()
             align_steps = loop_step + 1
 
         if not converged:
@@ -876,18 +911,11 @@ class ChessTaskEnv(ChessSimulationEnv):
         if not self.grasp_mode:
             needs_open = (new_scenario == "descend" and prev_scenario != "descend")
             needs_close = (new_scenario in {"ascend", "transit"} and prev_scenario == "descend")
-            dummy_action = np.zeros(4)
 
             if needs_open:
-                self.finger_target_joint = self.FINGER_OPEN_JOINT
-                for _ in range(50):
-                    self._set_action(dummy_action)
-                    self._mujoco_step(None)
+                self._smooth_fingers_to(self.FINGER_OPEN_JOINT, steps=50)
             elif needs_close:
-                self.finger_target_joint = self.FINGER_CLOSED_JOINT
-                for _ in range(50):
-                    self._set_action(dummy_action)
-                    self._mujoco_step(None)
+                self._smooth_fingers_to(self.FINGER_CLOSED_JOINT, steps=50)
 
             # Finger validation (same as _reset_sim Phase 3)
             l_pos = self._utils.get_joint_qpos(

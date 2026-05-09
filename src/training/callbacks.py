@@ -52,6 +52,46 @@ class DetailedLoggingCallback(BaseCallback):
             )
         return True
 
+class HERFineTuneWarmupCallback(BaseCallback):
+    """
+    For fine-tuning HER models without a saved replay buffer.
+
+    Keeping reset_num_timesteps=False lets the loaded policy act immediately, but
+    it can also make SB3 train before HER has a complete episode to sample from.
+    This callback pauses gradient updates until the first new episode finishes.
+    """
+    def __init__(self, verbose=0):
+        super().__init__(verbose)
+        self.original_gradient_steps = None
+        self.released = False
+
+    def _on_training_start(self) -> None:
+        if hasattr(self.model.replay_buffer, "ep_length"):
+            self.original_gradient_steps = self.model.gradient_steps
+            self.model.gradient_steps = 0
+            message = "HER fine-tune warmup: delaying gradient updates until the first complete episode."
+            print(message)
+            progress_logger.info(message)
+        else:
+            self.released = True
+
+    def _on_step(self) -> bool:
+        if self.released:
+            return True
+
+        ep_length = getattr(self.model.replay_buffer, "ep_length", None)
+        has_complete_episode = ep_length is not None and bool(np.any(ep_length > 0))
+        saw_episode_info = any("episode" in info for info in self.locals.get("infos", []))
+
+        if has_complete_episode or saw_episode_info:
+            self.model.gradient_steps = self.original_gradient_steps
+            self.released = True
+            message = "HER fine-tune warmup complete: gradient updates enabled."
+            print(message)
+            progress_logger.info(message)
+
+        return True
+
 class SuccessRateEvalCallback(EvalCallback):
     def __init__(self, *args, success_save_path="./checkpoints/", name="eval", **kwargs):
         super().__init__(*args, **kwargs)

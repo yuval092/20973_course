@@ -11,6 +11,7 @@ from stable_baselines3.common.vec_env import DummyVecEnv, SubprocVecEnv
 from src.utils.config import load_config
 from src.training.callbacks import (
     DetailedLoggingCallback,
+    HERFineTuneWarmupCallback,
     SuccessRateEvalCallback,
     CombinedSuccessCallback,
     progress_logger
@@ -26,7 +27,16 @@ class SACTrainer:
     persistence (checkpoints and final saves).
     """
 
-    def __init__(self, num_envs=None, fresh_start=False, debug=False, fixed_drift=False):
+    def __init__(
+        self,
+        num_envs=None,
+        fresh_start=False,
+        debug=False,
+        fixed_drift=False,
+        scenario=None,
+        reset_num_timesteps=True,
+        reset_entropy=True,
+    ):
         """
         Initializes the trainer.
 
@@ -35,7 +45,14 @@ class SACTrainer:
             fresh_start (bool): If True, starts from base weights even if checkpoints exist.
             debug (bool): If True, enables debug logging in all created environments.
             fixed_drift (bool): If True, bypasses the drift curriculum.
+            scenario (str | None): If set, force all training episodes to one scenario.
+            reset_num_timesteps (bool): If False, continue the loaded model's
+                timestep counter for fine-tuning.
+            reset_entropy (bool): If True, reset SAC entropy for extra exploration.
         """
+        if scenario not in {None, "transit", "descend", "ascend"}:
+            raise ValueError(f"Unknown training scenario: {scenario}")
+
         self.train_cfg = load_config("training")
         self.env_cfg = load_config("env")
         
@@ -43,6 +60,9 @@ class SACTrainer:
         self.fresh_start = fresh_start
         self.debug = debug
         self.fixed_drift = fixed_drift
+        self.scenario = scenario
+        self.reset_num_timesteps = reset_num_timesteps
+        self.reset_entropy = reset_entropy
         
         self.total_timesteps = self.train_cfg.get("total_timesteps", 1_000_000)
         self.base_model_path = self.train_cfg.get("base_model")
@@ -71,6 +91,7 @@ class SACTrainer:
         def _init():
             return Monitor(gym.make("ChessFetchTask-v0", 
                                     drift_curriculum_steps=curriculum_steps,
+                                    force_scenario=self.scenario,
                                     debug=self.debug,
                                     fixed_drift=self.fixed_drift))
         return _init
@@ -100,7 +121,8 @@ class SACTrainer:
         6. Calls model.learn().
         """
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        run_name = f"pure_movement_v6_{timestamp}"
+        scenario_suffix = f"_{self.scenario}" if self.scenario else ""
+        run_name = f"pure_movement_v6{scenario_suffix}_{timestamp}"
         
         # Calculate per-worker curriculum steps to ensure target_total is met
         drift_curriculum_steps = self.target_curriculum_total // self.num_envs
@@ -110,8 +132,12 @@ class SACTrainer:
             if not self.fresh_start:
                 model_path = self.find_best_checkpoint()
 
-        print(f"--- Starting V6 Pure Movement Training: {run_name} {model_path} ---")
-        progress_logger.info("Starting V6 run: %s with %d envs from %s.", run_name, self.num_envs, model_path)
+        scenario_label = self.scenario or "mixed"
+        print(f"--- Starting V6 Pure Movement Training: {run_name} {model_path} | scenario={scenario_label} ---")
+        progress_logger.info(
+            "Starting V6 run: %s with %d envs from %s (scenario=%s, reset_num_timesteps=%s, reset_entropy=%s).",
+            run_name, self.num_envs, model_path, scenario_label, self.reset_num_timesteps, self.reset_entropy
+        )
         progress_logger.info("Drift curriculum completes in %d steps per worker (%d total).", 
                              drift_curriculum_steps, self.target_curriculum_total)
 
@@ -131,13 +157,19 @@ class SACTrainer:
         cb_descend = SuccessRateEvalCallback(eval_descend, success_save_path=success_save_path, name="descend", eval_freq=eval_freq, n_eval_episodes=n_eval_episodes)
         cb_ascend  = SuccessRateEvalCallback(eval_ascend, success_save_path=success_save_path, name="ascend", eval_freq=eval_freq, n_eval_episodes=n_eval_episodes)
 
-        callbacks = CallbackList([
+        callback_items = [
             DetailedLoggingCallback(),
+        ]
+        if not self.reset_num_timesteps:
+            callback_items.append(HERFineTuneWarmupCallback())
+
+        callback_items.extend([
             cb_transit,
             cb_descend,
             cb_ascend,
             CombinedSuccessCallback([cb_transit, cb_descend, cb_ascend], success_save_path),
         ])
+        callbacks = CallbackList(callback_items)
 
         # Model Loading and Hyperparameter Injection
         model = SAC.load(
@@ -155,22 +187,38 @@ class SACTrainer:
         if self.fresh_start:
             model.replay_buffer.reset()
         
-        # --- Entropy Reset ---
-        # The pretrained weights have very low entropy (~0.003), which hinders exploration
-        # on the new dense reward surface. We reset it to 0.1 to jumpstart learning.
-        initial_ent_coef = float(self.train_cfg.get("initial_ent_coef", 0.1))
-        ent_coef_lr = float(self.train_cfg.get("ent_coef_lr", 1e-3))
-        
-        model.log_ent_coef = th.log(th.ones(1) * initial_ent_coef).to(model.device)
-        model.log_ent_coef = th.nn.Parameter(model.log_ent_coef, requires_grad=True)
-        model.ent_coef_optimizer = th.optim.Adam([model.log_ent_coef], lr=ent_coef_lr)
+        if self.reset_entropy:
+            # The pretrained weights have very low entropy (~0.003), which can
+            # hinder exploration on a changed reward surface.
+            initial_ent_coef = float(self.train_cfg.get("initial_ent_coef", 0.1))
+            ent_coef_lr = float(self.train_cfg.get("ent_coef_lr", 1e-3))
+
+            model.log_ent_coef = th.log(th.ones(1) * initial_ent_coef).to(model.device)
+            model.log_ent_coef = th.nn.Parameter(model.log_ent_coef, requires_grad=True)
+            model.ent_coef_optimizer = th.optim.Adam([model.log_ent_coef], lr=ent_coef_lr)
+        else:
+            print("Keeping loaded SAC entropy coefficient for conservative fine-tuning.")
+            progress_logger.info("Keeping loaded SAC entropy coefficient for conservative fine-tuning.")
         
         print(f"Beginning {self.total_timesteps:,} steps...")
-        model.learn(total_timesteps=self.total_timesteps, callback=callbacks, reset_num_timesteps=True, progress_bar=True)
+        model.learn(
+            total_timesteps=self.total_timesteps,
+            callback=callbacks,
+            reset_num_timesteps=self.reset_num_timesteps,
+            progress_bar=True,
+        )
 
-        final_path = f"chess_fetch_pure_v6_{timestamp}.zip"
+        final_path = f"chess_fetch_pure_v6{scenario_suffix}_{timestamp}.zip"
         model.save(final_path)
         print(f"Training complete! Saved to {final_path}")
+        print(f"Eval checkpoints saved under {success_save_path}")
+        print("For one-model full-sequence eval, prefer best_model_combined.zip from that folder when it exists.")
+        if self.scenario:
+            print(
+                f"Note: this is a {self.scenario}-specialized model. "
+                f"For full pick-and-place eval, pass it as --{self.scenario}-model "
+                "with a stable combined model in --model."
+            )
         
         train_env.close()
         eval_transit.close()
