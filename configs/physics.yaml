@@ -1,0 +1,13 @@
+max_settle_steps: 500
+settle_tolerance: 0.003
+settle_gain: 0.3
+vertical_quat: [1.0, 0.0, 1.0, 0.0]
+initial_qpos: [-0.05, 0.00]
+
+# Simulation Setup
+env_setup_steps: 10            # Physics steps to run during initial env setup
+max_goal_retries: 100          # Max attempts to sample a valid non-overlapping goal
+pos_ctrl_scale: 0.015          # Max distance in meters the arm can move per step
+
+# Simulation Setup (Continued)
+settle_steps_final: 25         # Physics steps for the final settle in reset

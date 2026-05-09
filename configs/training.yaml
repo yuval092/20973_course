@@ -1,0 +1,22 @@
+total_timesteps: 1000000
+num_envs: 8
+base_model: "models/sac-FetchPickAndPlace-v4.zip"
+target_curriculum_total: 500000
+learning_rate: 0.00005
+batch_size: 512
+target_entropy: -4.0
+learning_starts: 10000
+initial_ent_coef: 0.1
+ent_coef_lr: 0.001
+
+# Evaluation Settings
+eval_freq: 10000               # How often to run evaluation (total steps)
+n_eval_episodes: 50            # Number of episodes per evaluation scenario
+
+# Logging Settings
+log_freq: 2000                 # How often to print progress to console (total steps)
+moving_avg_window: 100         # Window size for calculating mean rewards/success
+
+# Logging Settings (Continued)
+scenario_log_window: 30        # Moving average window for scenario-specific success logging
+scenario_min_episodes: 10      # Minimum episodes required before logging scenario success
